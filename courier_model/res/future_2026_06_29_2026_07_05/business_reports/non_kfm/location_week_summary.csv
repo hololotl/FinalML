@@ -1,0 +1,37 @@
+business_group,location_id,segment,vehicle_type,slots_to_create,overcoverage_hours,location_name,predicted_orders
+non_kfm,grp_19_54,medium,auto,25,28,Conversation Никитская + Maroon,153.2404268618762
+non_kfm,grp_102_125,medium,auto,14,0,Мясо&Рыба Тверская + Meraki,78.23428454482949
+non_kfm,grp_130_139,medium,auto,14,21,EVA Хамовники + Клёво Усачева,28.668315154160485
+non_kfm,grp_187_296,medium,auto,14,14,Биродром и Панчетта Народное ополчение + Клево Авиапарк,25.97046881550778
+non_kfm,grp_62_140,medium,auto,14,0,Печорин Новочеремушкинская  + Клёво Черемушки,24.067512488693588
+non_kfm,182,medium,auto,14,21,Miss You,12.393513279961251
+non_kfm,grp_98_298,medium,auto,12,24,Печорин Угрешская + Ив. Дурдинъ Волгоградский,34.2584818570459
+non_kfm,478,medium,bike,7,7,Сыроварня Метрополис,38.41911796609897
+non_kfm,grp_288_424,medium,auto,7,7,Биродром и Ив.Дурдинъ Мичуринский + Корнер Ланового,37.54417563469043
+non_kfm,grp_136_292,medium,auto,7,0,Ikura + Узбекистан,33.02628473642086
+non_kfm,grp_71_94,medium,auto,7,0,КО Medusa + КО Высота 5642,19.319012575475128
+non_kfm,119,medium,bike,7,7,Bluefin Успенское,18.534715016109615
+non_kfm,58,medium,auto,7,3,Печорин Тишинка,17.957199754998236
+non_kfm,grp_122_131,medium,bike,7,14,Косяк Тишинка + EVA Б.Грузинская,17.06286514665214
+non_kfm,grp_302_443,medium,auto,7,14,Ribambelle Шелепиха + Пинский доставка,14.713178896429396
+non_kfm,301,medium,auto,7,0,Биродром и Панчетта Дежнева,14.707521149520124
+non_kfm,516,low,auto,7,0,La Raquette by Pinskiy&Co,14.617081025547174
+non_kfm,59,medium,auto,7,9,Печорин Шаболовка,14.119675835567788
+non_kfm,222,low,auto,7,0,Ирис Химки,10.936560498627442
+non_kfm,116,medium,auto,7,30,Корнер Дмитровка,10.689825986870284
+non_kfm,72,medium,auto,7,0,КО Магадан,9.503196131750597
+non_kfm,124,medium,auto,7,21,ЦБ AVA Bistro,9.330940014744476
+non_kfm,100,medium,auto,7,14,Колбасный Цех / Магадан,8.732087975141729
+non_kfm,119,medium,auto,6,42,Bluefin Успенское,18.534715016109615
+non_kfm,36,medium,auto,5,8,Friends Forever Botanica,18.478047377551214
+non_kfm,121,medium,auto,4,8,Косяк Новая Рига,8.775580669614971
+non_kfm,grp_98_298,medium,bike,2,8,Печорин Угрешская + Ив. Дурдинъ Волгоградский,34.2584818570459
+non_kfm,114,low,auto,2,0,Bluefin Скаковая,23.45278749232164
+non_kfm,60,medium,auto,2,3,Печорин Карбышева,8.965592946906204
+non_kfm,grp_102_125,medium,bike,1,3,Мясо&Рыба Тверская + Meraki,78.23428454482949
+non_kfm,478,medium,auto,1,7,Сыроварня Метрополис,38.41911796609897
+non_kfm,grp_71_94,medium,bike,1,6,КО Medusa + КО Высота 5642,19.319012575475128
+non_kfm,36,medium,bike,1,0,Friends Forever Botanica,18.478047377551214
+non_kfm,146,medium,bike,1,2,Maestrello Покровка,10.365067956485177
+non_kfm,146,medium,auto,1,2,Maestrello Покровка,10.365067956485177
+non_kfm,480,low,auto,1,2,Сыроварня Атриум,6.702082989705862

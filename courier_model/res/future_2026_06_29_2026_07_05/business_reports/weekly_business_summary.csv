@@ -1,0 +1,3 @@
+business_group,forecast_rows,locations,predicted_orders,forecast_segment_slots,business_long_shift_slots,overcoverage_hours,auto_long_shift_slots,bike_long_shift_slots
+kfm,1876,50,14360.753214318005,3623,1448,2230,585,863
+non_kfm,1736,90,926.874548977329,349,247,325,220,27

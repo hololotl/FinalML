@@ -1,0 +1,2 @@
+forecast_rows,locations,predicted_orders,forecast_segment_slots,business_long_shift_slots,auto_long_shift_slots,bike_long_shift_slots,overcoverage_hours
+3612,140,15664.293294802985,4143,1152,591,561,2987

@@ -1,0 +1,2 @@
+business_group,forecast_rows,locations,predicted_orders,forecast_segment_slots,business_long_shift_slots,overcoverage_hours,auto_long_shift_slots,bike_long_shift_slots
+mixed,18,1,1.778485652085696,0,,,,

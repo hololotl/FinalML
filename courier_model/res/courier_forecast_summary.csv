@@ -1,0 +1,13 @@
+metric,value
+rows,53131
+history_start,2025-07-22 21:00:00+03:00
+history_finish,2025-11-19 21:00:00+03:00
+orders_prediction_sum,320153.8583613192
+auto_order_prediction_sum,133462.92342546984
+bike_order_prediction_sum,186690.93493584933
+auto_slots_needed_sum,69599
+bike_slots_needed_sum,55889
+total_slots_needed_sum,125488
+safety_buffer,1.15
+default_auto_orders_per_slot_per_hour,1.5
+default_bike_orders_per_slot_per_hour,1.0

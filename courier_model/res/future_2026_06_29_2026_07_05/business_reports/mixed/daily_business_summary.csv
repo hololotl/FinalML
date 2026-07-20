@@ -1,0 +1,7 @@
+business_group,date,predicted_orders,forecast_segment_slots,auto_long_shift_slots,bike_long_shift_slots,total_long_shift_slots,locations,overcoverage_hours
+mixed,2026-06-29,0.33176662896213127,0,,,,1,
+mixed,2026-06-30,0.2974319141852265,0,,,,1,
+mixed,2026-07-01,0.2890025105917652,0,,,,1,
+mixed,2026-07-02,0.2890025105917652,0,,,,1,
+mixed,2026-07-03,0.2890025105917652,0,,,,1,
+mixed,2026-07-04,0.2822795771630426,0,,,,1,
