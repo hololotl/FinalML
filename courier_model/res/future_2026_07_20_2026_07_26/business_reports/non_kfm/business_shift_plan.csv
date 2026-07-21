@@ -1,0 +1,122 @@
+location_id,date,segment,vehicle_type,shift_template,shift_start,shift_finish,shift_hours,open_intervals,slots_to_create,covered_need_hours,template_hours,overcoverage_hours,shift_window_predicted_orders,location_name,business_group
+119,2026-07-20,medium,auto,demand_layer,11:00,22:00,11,11:00-22:00,1,4,11,7,1.221221910279466,Bluefin Успенское,non_kfm
+119,2026-07-20,medium,bike,demand_layer,11:00,18:00,7,11:00-22:00,1,6,7,1,0.7452605851912862,Bluefin Успенское,non_kfm
+301,2026-07-20,medium,auto,demand_layer,12:00,23:00,11,12:00-23:00,1,5,11,6,1.046522578929049,Биродром и Панчетта Дежнева,non_kfm
+301,2026-07-20,medium,bike,demand_layer,12:00,18:00,6,12:00-23:00,1,6,6,0,0.5316469612244253,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-20,medium,auto,demand_layer,08:00,18:00,10,08:00-23:00,1,6,10,4,1.4494335295509009,Friends Forever Botanica,non_kfm
+36,2026-07-20,medium,bike,demand_layer,08:00,12:00,4,08:00-23:00,1,4,4,0,0.43616124285124797,Friends Forever Botanica,non_kfm
+516,2026-07-20,low,auto,demand_layer,09:00,12:00,3,09:00-22:00,1,3,3,0,0.37825493217089445,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-20,low,auto,demand_layer,12:00,23:00,11,12:00-23:30,1,5,11,6,0.5706613289945186,ЮГ 22,non_kfm
+560,2026-07-20,low,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,6,12,6,0.6617891347827106,Пафос,non_kfm
+597,2026-07-20,low,auto,demand_layer,09:00,16:00,7,09:00-22:30,1,3,7,4,0.3078901073806437,Rockets Тверской,non_kfm
+597,2026-07-20,low,auto,demand_layer,16:00,22:00,6,09:00-22:30,1,4,6,2,0.45652906319561487,Rockets Тверской,non_kfm
+grp_102_125,2026-07-20,medium,auto,demand_layer,00:00,12:00,12,00:00-23:59,1,12,12,0,1.7609672543520425,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_102_125,2026-07-20,medium,auto,demand_layer,12:00,23:00,11,00:00-23:59,1,11,11,0,6.553121276885716,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-20,medium,auto,demand_layer,08:00,18:00,10,08:00-24:00,3,18,30,12,12.835558313007873,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-20,medium,bike,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,0.5784820337159243,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-20,medium,bike,demand_layer,16:00,24:00,8,08:00-24:00,1,6,8,2,1.6551130123591598,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-20,medium,auto,demand_layer,10:00,18:00,8,10:00-22:00,1,6,8,2,0.6490202959795967,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-20,medium,bike,demand_layer,12:00,23:00,11,12:00-23:59,1,11,11,0,1.211822602033789,КО Medusa + КО Высота 5642,non_kfm
+119,2026-07-21,medium,auto,demand_layer,11:00,22:00,11,11:00-22:00,1,4,11,7,1.1152429904306251,Bluefin Успенское,non_kfm
+119,2026-07-21,medium,bike,demand_layer,11:00,18:00,7,11:00-22:00,1,6,7,1,0.6558787948220051,Bluefin Успенское,non_kfm
+301,2026-07-21,medium,auto,demand_layer,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+516,2026-07-21,low,auto,demand_layer,09:00,12:00,3,09:00-22:00,1,3,3,0,0.356929178366864,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-21,low,auto,demand_layer,12:00,23:00,11,12:00-23:30,1,5,11,6,0.587099696276829,ЮГ 22,non_kfm
+560,2026-07-21,low,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,6,12,6,0.6399572672909022,Пафос,non_kfm
+597,2026-07-21,low,auto,demand_layer,09:00,16:00,7,09:00-22:30,1,3,7,4,0.25541626540415857,Rockets Тверской,non_kfm
+597,2026-07-21,low,auto,demand_layer,16:00,22:00,6,09:00-22:30,1,4,6,2,0.4696797570214632,Rockets Тверской,non_kfm
+grp_102_125,2026-07-21,medium,auto,demand_layer,00:00,12:00,12,00:00-23:59,1,12,12,0,1.9900348037731561,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_102_125,2026-07-21,medium,auto,demand_layer,12:00,23:00,11,00:00-23:59,1,11,11,0,6.701690057587242,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-21,medium,auto,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,9.156827800266312,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-21,medium,auto,demand_layer,08:00,18:00,10,08:00-24:00,2,12,20,8,13.309578861663661,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-21,medium,auto,demand_layer,16:00,24:00,8,08:00-24:00,1,8,8,0,11.5696960235293,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-21,medium,bike,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,0.6217380317250383,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-21,medium,bike,demand_layer,16:00,24:00,8,08:00-24:00,1,6,8,2,2.7808723090555887,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-21,medium,auto,demand_layer,10:00,18:00,8,10:00-22:00,1,6,8,2,0.7077235563614775,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-21,medium,bike,demand_layer,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+119,2026-07-22,medium,auto,demand_layer,11:00,22:00,11,11:00-22:00,1,4,11,7,1.1152429904306251,Bluefin Успенское,non_kfm
+119,2026-07-22,medium,bike,demand_layer,11:00,18:00,7,11:00-22:00,1,6,7,1,0.6558787948220051,Bluefin Успенское,non_kfm
+301,2026-07-22,medium,auto,demand_layer,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-22,medium,auto,demand_layer,08:00,18:00,10,08:00-23:00,1,10,10,0,1.2007384101452783,Friends Forever Botanica,non_kfm
+516,2026-07-22,low,auto,demand_layer,09:00,12:00,3,09:00-22:00,1,3,3,0,0.356929178366864,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-22,low,auto,demand_layer,12:00,23:00,11,12:00-23:30,1,5,11,6,0.587099696276829,ЮГ 22,non_kfm
+560,2026-07-22,low,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,6,12,6,0.6399572672909022,Пафос,non_kfm
+597,2026-07-22,low,auto,demand_layer,09:00,16:00,7,09:00-22:30,1,3,7,4,0.25541626540415857,Rockets Тверской,non_kfm
+597,2026-07-22,low,auto,demand_layer,16:00,22:00,6,09:00-22:30,1,4,6,2,0.4696797570214632,Rockets Тверской,non_kfm
+grp_102_125,2026-07-22,medium,auto,demand_layer,00:00,12:00,12,00:00-23:59,1,12,12,0,1.3550937780259957,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_102_125,2026-07-22,medium,auto,demand_layer,12:00,23:00,11,00:00-23:59,1,11,11,0,7.973830034816112,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-22,medium,auto,demand_layer,08:00,18:00,10,08:00-24:00,3,18,30,12,12.835558313007873,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-22,medium,bike,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,0.5784820337159243,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-22,medium,bike,demand_layer,16:00,24:00,8,08:00-24:00,1,6,8,2,1.8154642937912273,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-22,medium,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,10,12,2,1.3588996284001613,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-22,medium,bike,demand_layer,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+119,2026-07-23,medium,auto,demand_layer,11:00,23:00,12,11:00-23:00,1,5,12,7,1.2882632001624694,Bluefin Успенское,non_kfm
+119,2026-07-23,medium,bike,demand_layer,11:00,18:00,7,11:00-23:00,1,6,7,1,0.6558787948220051,Bluefin Успенское,non_kfm
+301,2026-07-23,medium,auto,demand_layer,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-23,medium,auto,demand_layer,08:00,18:00,10,08:00-23:00,1,10,10,0,1.285384072462101,Friends Forever Botanica,non_kfm
+516,2026-07-23,low,auto,demand_layer,09:00,12:00,3,09:00-22:00,1,3,3,0,0.356929178366864,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-23,low,auto,demand_layer,12:00,23:00,11,12:00-23:30,1,5,11,6,0.587099696276829,ЮГ 22,non_kfm
+560,2026-07-23,low,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,6,12,6,0.6399572672909022,Пафос,non_kfm
+597,2026-07-23,low,auto,demand_layer,09:00,16:00,7,09:00-22:30,1,3,7,4,0.25541626540415857,Rockets Тверской,non_kfm
+597,2026-07-23,low,auto,demand_layer,16:00,22:00,6,09:00-22:30,1,4,6,2,0.4696797570214632,Rockets Тверской,non_kfm
+grp_102_125,2026-07-23,medium,auto,demand_layer,00:00,12:00,12,00:00-23:59,1,12,12,0,1.3454028694929048,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_102_125,2026-07-23,medium,auto,demand_layer,12:00,23:00,11,00:00-23:59,1,11,11,0,9.575727173781374,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-23,medium,auto,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,9.011267957877143,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-23,medium,auto,demand_layer,08:00,18:00,10,08:00-24:00,2,12,20,8,13.091239098079908,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-23,medium,auto,demand_layer,16:00,24:00,8,08:00-24:00,1,8,8,0,10.906928202706567,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-23,medium,bike,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,0.619762106262742,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-23,medium,bike,demand_layer,16:00,24:00,8,08:00-24:00,1,6,8,2,2.5631614080882357,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-23,medium,auto,demand_layer,10:00,18:00,8,10:00-22:00,1,6,8,2,0.6490202959795967,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-23,medium,bike,demand_layer,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+119,2026-07-24,medium,auto,demand_layer,11:00,23:00,12,11:00-23:00,1,5,12,7,1.2882632001624694,Bluefin Успенское,non_kfm
+119,2026-07-24,medium,bike,demand_layer,11:00,18:00,7,11:00-23:00,1,6,7,1,0.6558787948220051,Bluefin Успенское,non_kfm
+301,2026-07-24,medium,auto,demand_layer,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-24,medium,auto,demand_layer,08:00,16:00,8,08:00-23:00,1,8,8,0,0.9182377426068098,Friends Forever Botanica,non_kfm
+36,2026-07-24,medium,auto,demand_layer,16:00,23:00,7,08:00-23:00,1,7,7,0,0.719919565851192,Friends Forever Botanica,non_kfm
+516,2026-07-24,low,auto,demand_layer,09:00,12:00,3,09:00-22:00,1,3,3,0,0.356929178366864,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-24,low,auto,demand_layer,12:00,23:00,11,12:00-23:30,1,5,11,6,0.587099696276829,ЮГ 22,non_kfm
+560,2026-07-24,low,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,6,12,6,0.6399572672909022,Пафос,non_kfm
+597,2026-07-24,low,auto,demand_layer,09:00,16:00,7,09:00-22:30,1,3,7,4,0.25541626540415857,Rockets Тверской,non_kfm
+597,2026-07-24,low,auto,demand_layer,16:00,22:00,6,09:00-22:30,1,4,6,2,0.4696797570214632,Rockets Тверской,non_kfm
+grp_102_125,2026-07-24,medium,auto,demand_layer,00:00,12:00,12,00:00-23:59,1,12,12,0,2.098919660817096,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_102_125,2026-07-24,medium,auto,demand_layer,12:00,23:00,11,00:00-23:59,1,11,11,0,8.387112343765054,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-24,medium,auto,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,9.294303058358004,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-24,medium,auto,demand_layer,08:00,18:00,10,08:00-24:00,2,12,20,8,13.548879368509489,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-24,medium,auto,demand_layer,16:00,24:00,8,08:00-24:00,1,8,8,0,11.813459147071143,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-24,medium,bike,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,0.5849374278833597,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-24,medium,bike,demand_layer,16:00,24:00,8,08:00-24:00,1,6,8,2,2.8343932372826535,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-24,medium,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,10,12,2,1.1406676343276252,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-24,medium,bike,demand_layer,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+119,2026-07-25,medium,auto,demand_layer,11:00,23:00,12,11:00-23:00,1,5,12,7,1.221331768537034,Bluefin Успенское,non_kfm
+119,2026-07-25,medium,bike,demand_layer,11:00,18:00,7,11:00-23:00,1,6,7,1,0.6118895273233218,Bluefin Успенское,non_kfm
+301,2026-07-25,medium,auto,demand_layer,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9291987751515141,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-25,medium,auto,demand_layer,08:00,18:00,10,08:00-23:00,1,10,10,0,1.3608241215437453,Friends Forever Botanica,non_kfm
+516,2026-07-25,low,auto,demand_layer,09:00,12:00,3,09:00-22:00,1,3,3,0,0.33004388039731575,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-25,low,auto,demand_layer,12:00,23:00,11,12:00-23:30,1,5,11,6,0.5502525755978329,ЮГ 22,non_kfm
+560,2026-07-25,low,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,4,12,8,0.6030402661917746,Пафос,non_kfm
+597,2026-07-25,low,auto,demand_layer,16:00,22:00,6,09:00-22:30,1,4,6,2,0.4402020604782664,Rockets Тверской,non_kfm
+grp_102_125,2026-07-25,medium,auto,demand_layer,00:00,12:00,12,00:00-23:59,1,12,12,0,2.4039894216758464,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_102_125,2026-07-25,medium,auto,demand_layer,12:00,23:00,11,00:00-23:59,1,11,11,0,7.06125322248231,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-25,medium,auto,demand_layer,08:00,18:00,10,08:00-24:00,2,12,20,8,11.382520435425757,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-25,medium,bike,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,0.5847498567437448,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-25,medium,bike,demand_layer,16:00,24:00,8,08:00-24:00,1,6,8,2,1.7748967462145515,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-25,medium,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,10,12,2,1.3967832537986917,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-25,medium,auto,demand_layer,12:00,23:00,11,12:00-23:59,1,5,11,6,1.3127859941602076,КО Medusa + КО Высота 5642,non_kfm
+grp_71_94,2026-07-25,medium,bike,demand_layer,12:00,18:00,6,12:00-23:59,1,6,6,0,0.6628178723126136,КО Medusa + КО Высота 5642,non_kfm
+119,2026-07-26,medium,auto,demand_layer,11:00,23:00,12,11:00-23:00,1,5,12,7,1.221331768537034,Bluefin Успенское,non_kfm
+119,2026-07-26,medium,bike,demand_layer,11:00,18:00,7,11:00-23:00,1,6,7,1,0.6118895273233218,Bluefin Успенское,non_kfm
+301,2026-07-26,medium,auto,demand_layer,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9291987751515141,Биродром и Панчетта Дежнева,non_kfm
+516,2026-07-26,low,auto,demand_layer,09:00,12:00,3,09:00-22:00,1,3,3,0,0.33004388039731575,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-26,low,auto,demand_layer,12:00,23:00,11,12:00-23:30,1,5,11,6,0.5502525755978329,ЮГ 22,non_kfm
+560,2026-07-26,low,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,4,12,8,0.6030402661917746,Пафос,non_kfm
+597,2026-07-26,low,auto,demand_layer,16:00,22:00,6,09:00-22:30,1,4,6,2,0.4402020604782664,Rockets Тверской,non_kfm
+grp_102_125,2026-07-26,medium,auto,demand_layer,00:00,12:00,12,00:00-23:59,1,12,12,0,2.311934769226015,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_102_125,2026-07-26,medium,auto,demand_layer,12:00,23:00,11,00:00-23:59,1,11,11,0,9.397320206961249,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-26,medium,auto,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,9.246531999985212,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-26,medium,auto,demand_layer,08:00,18:00,10,08:00-24:00,2,12,20,8,13.494505171142741,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-26,medium,auto,demand_layer,16:00,24:00,8,08:00-24:00,1,8,8,0,11.41023474373381,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-26,medium,bike,demand_layer,08:00,16:00,8,08:00-24:00,1,4,8,4,0.5640924418848774,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-26,medium,bike,demand_layer,16:00,24:00,8,08:00-24:00,1,6,8,2,2.688610909180826,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-26,medium,auto,demand_layer,10:00,22:00,12,10:00-22:00,1,10,12,2,1.1081170981740947,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-26,medium,auto,demand_layer,12:00,23:00,11,12:00-23:59,1,5,11,6,1.3127859941602076,КО Medusa + КО Высота 5642,non_kfm
+grp_71_94,2026-07-26,medium,bike,demand_layer,12:00,18:00,6,12:00-23:59,1,6,6,0,0.6628178723126136,КО Medusa + КО Высота 5642,non_kfm

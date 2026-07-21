@@ -23,6 +23,12 @@ OUTPUT_DIR = Path(
 BUSINESS_SHIFT_BUILD_MODE = os.getenv("BUSINESS_SHIFT_BUILD_MODE", "demand_layers")
 BUSINESS_LAYER_ANCHOR_TO_OPEN = os.getenv("BUSINESS_LAYER_ANCHOR_TO_OPEN", "1") == "1"
 MAX_SHIFT_HOURS = int(os.getenv("MAX_SHIFT_HOURS", "12"))
+PARTNER_DONOR_MAP_PATH = Path(
+    os.getenv(
+        "PARTNER_DONOR_MAP_PATH",
+        SCRIPT_DIR / "partner_donor_map.csv",
+    )
+)
 KFM_ORGANIZATION_IDS = {
     "5",
     "3",
@@ -145,8 +151,300 @@ def build_group_to_members():
     location_to_group = cm.build_merged_location_groups()
     group_to_members = {}
     for member_id, group_id in location_to_group.items():
-        group_to_members.setdefault(group_id, []).append(member_id)
+        group_to_members.setdefault(group_id, []).append(str(member_id))
     return group_to_members
+
+
+def load_partner_donor_map(path=PARTNER_DONOR_MAP_PATH):
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame(
+            columns=[
+                "partner_location_id",
+                "partner_name",
+                "kfm_donor_id",
+                "kfm_donor_name",
+                "mode",
+                "notes",
+            ]
+        )
+    mapping = pd.read_csv(path, dtype=str).fillna("")
+    mapping["partner_location_id"] = mapping["partner_location_id"].astype(str)
+    mapping["kfm_donor_id"] = mapping["kfm_donor_id"].astype(str)
+    mapping["mode"] = mapping["mode"].str.strip().str.lower()
+    return mapping
+
+
+def _group_members_from_id(location_id, group_to_members):
+    location_id = str(location_id)
+    members = [str(m) for m in group_to_members.get(location_id, [])]
+    if members:
+        return members
+    if location_id.startswith("grp_"):
+        return [part for part in location_id.replace("grp_", "").split("_") if part]
+    return []
+
+
+def resolve_absorb_target(location_id, absorb_by_partner, group_to_members):
+    """Return (action, donor_id, partner_ids) for a forecast location_id."""
+    location_id = str(location_id)
+    if location_id in absorb_by_partner:
+        return "absorb", absorb_by_partner[location_id], [location_id]
+
+    if not location_id.startswith("grp_"):
+        return "keep", None, []
+
+    members = _group_members_from_id(location_id, group_to_members)
+    if not members:
+        return "keep", None, []
+
+    absorb_members = [m for m in members if m in absorb_by_partner]
+    if not absorb_members:
+        return "keep", None, members
+    # Draft rule: absorb whole merged group only if every member is mapped to absorb.
+    if len(absorb_members) != len(members):
+        return "keep", None, members
+
+    donors = [absorb_by_partner[m] for m in absorb_members]
+    donor_id = donors[0]
+    return "absorb", donor_id, absorb_members
+
+
+def absorb_partner_demand(forecast_df, mapping_df, group_to_members):
+    """Move partner slot demand onto KFM donors; drop absorbed partners from publish set."""
+    forecast = forecast_df.copy()
+    forecast["location_id"] = forecast["location_id"].astype(str)
+    forecast["segment_datetime"] = pd.to_datetime(forecast["segment_datetime"])
+
+    for col, default in [
+        ("absorbed_partner_auto_slots", 0),
+        ("absorbed_partner_bike_slots", 0),
+        ("absorbed_partners", ""),
+    ]:
+        if col not in forecast.columns:
+            forecast[col] = default
+
+    absorb_rows = mapping_df[mapping_df["mode"] == "absorb"].copy()
+    absorb_rows = absorb_rows[absorb_rows["kfm_donor_id"].astype(str).str.len() > 0]
+    absorb_by_partner = {
+        str(row.partner_location_id): str(row.kfm_donor_id)
+        for row in absorb_rows.itertuples(index=False)
+    }
+    partner_name_by_id = {
+        str(row.partner_location_id): str(row.partner_name)
+        for row in mapping_df.itertuples(index=False)
+    }
+
+    empty_audit = pd.DataFrame(
+        columns=[
+            "source_location_id",
+            "partner_ids",
+            "partner_names",
+            "kfm_donor_id",
+            "segment_datetime",
+            "time_segment",
+            "auto_slots_moved",
+            "bike_slots_moved",
+            "action",
+        ]
+    )
+    if not absorb_by_partner:
+        return forecast, empty_audit
+
+    targets = {}
+    for location_id in forecast["location_id"].unique():
+        action, donor_id, partner_ids = resolve_absorb_target(
+            location_id,
+            absorb_by_partner,
+            group_to_members,
+        )
+        if action == "absorb":
+            targets[str(location_id)] = (donor_id, partner_ids)
+
+    if not targets:
+        return forecast, empty_audit
+
+    audit_rows = []
+    # key -> {auto, bike, partners, template_row}
+    donor_additions = {}
+    drop_locations = set()
+
+    for source_location_id, (donor_id, partner_ids) in targets.items():
+        source_mask = forecast["location_id"] == source_location_id
+        source_rows = forecast.loc[source_mask]
+        if source_rows.empty:
+            continue
+        drop_locations.add(source_location_id)
+        partner_names = ",".join(
+            partner_name_by_id.get(pid, pid) for pid in partner_ids
+        )
+        for _, prow in source_rows.iterrows():
+            auto_slots = int(prow.get("auto_slots_needed", 0) or 0)
+            bike_slots = int(prow.get("bike_slots_needed", 0) or 0)
+            key = (
+                donor_id,
+                pd.Timestamp(prow["segment_datetime"]),
+                str(prow["time_segment"]),
+            )
+            current = donor_additions.get(key)
+            if current is None:
+                template = prow.copy()
+                template["location_id"] = donor_id
+                template["absorbed_partner_auto_slots"] = 0
+                template["absorbed_partner_bike_slots"] = 0
+                template["absorbed_partners"] = ""
+                donor_additions[key] = {
+                    "auto": auto_slots,
+                    "bike": bike_slots,
+                    "partners": partner_names,
+                    "template": template,
+                }
+            else:
+                current["auto"] += auto_slots
+                current["bike"] += bike_slots
+                merged = ",".join(
+                    dict.fromkeys(
+                        part
+                        for part in (
+                            current["partners"].split(",") + partner_names.split(",")
+                        )
+                        if part
+                    )
+                )
+                current["partners"] = merged
+
+            audit_rows.append({
+                "source_location_id": source_location_id,
+                "partner_ids": ",".join(partner_ids),
+                "partner_names": partner_names,
+                "kfm_donor_id": donor_id,
+                "segment_datetime": prow["segment_datetime"],
+                "time_segment": prow["time_segment"],
+                "auto_slots_moved": auto_slots,
+                "bike_slots_moved": bike_slots,
+                "action": "absorb",
+            })
+
+    forecast = forecast.loc[~forecast["location_id"].isin(drop_locations)].copy()
+    forecast = forecast.reset_index(drop=True)
+
+    lookup = {
+        (
+            str(row.location_id),
+            pd.Timestamp(row.segment_datetime),
+            str(row.time_segment),
+        ): idx
+        for idx, row in forecast.iterrows()
+    }
+
+    new_rows = []
+    for key, payload in donor_additions.items():
+        donor_id, segment_datetime, time_segment = key
+        auto_add = int(payload["auto"])
+        bike_add = int(payload["bike"])
+        partners_text = payload["partners"]
+        if key in lookup:
+            idx = lookup[key]
+            forecast.at[idx, "auto_slots_needed"] = (
+                int(forecast.at[idx, "auto_slots_needed"] or 0) + auto_add
+            )
+            forecast.at[idx, "bike_slots_needed"] = (
+                int(forecast.at[idx, "bike_slots_needed"] or 0) + bike_add
+            )
+            forecast.at[idx, "total_slots_needed"] = (
+                int(forecast.at[idx, "auto_slots_needed"])
+                + int(forecast.at[idx, "bike_slots_needed"])
+            )
+            for alias_src, alias_dst in [
+                ("auto_slots_needed", "auto_couriers_needed"),
+                ("bike_slots_needed", "bike_couriers_needed"),
+                ("total_slots_needed", "total_couriers_needed"),
+            ]:
+                if alias_dst in forecast.columns:
+                    forecast.at[idx, alias_dst] = forecast.at[idx, alias_src]
+            forecast.at[idx, "absorbed_partner_auto_slots"] = (
+                int(forecast.at[idx, "absorbed_partner_auto_slots"] or 0) + auto_add
+            )
+            forecast.at[idx, "absorbed_partner_bike_slots"] = (
+                int(forecast.at[idx, "absorbed_partner_bike_slots"] or 0) + bike_add
+            )
+            prev = str(forecast.at[idx, "absorbed_partners"] or "")
+            forecast.at[idx, "absorbed_partners"] = ",".join(
+                dict.fromkeys(
+                    part for part in (prev.split(",") + partners_text.split(",")) if part
+                )
+            )
+        else:
+            new_row = payload["template"].copy()
+            donor_segment = forecast.loc[forecast["location_id"] == donor_id, "segment"]
+            if not donor_segment.empty:
+                new_row["segment"] = donor_segment.iloc[0]
+            new_row["location_id"] = donor_id
+            new_row["segment_datetime"] = segment_datetime
+            new_row["time_segment"] = time_segment
+            new_row["auto_slots_needed"] = auto_add
+            new_row["bike_slots_needed"] = bike_add
+            new_row["total_slots_needed"] = auto_add + bike_add
+            new_row["auto_couriers_needed"] = auto_add
+            new_row["bike_couriers_needed"] = bike_add
+            new_row["total_couriers_needed"] = auto_add + bike_add
+            new_row["orders_prediction"] = 0.0
+            new_row["auto_order_prediction"] = 0.0
+            new_row["bike_order_prediction"] = 0.0
+            new_row["absorbed_partner_auto_slots"] = auto_add
+            new_row["absorbed_partner_bike_slots"] = bike_add
+            new_row["absorbed_partners"] = partners_text
+            new_rows.append(new_row)
+
+    if new_rows:
+        forecast = pd.concat([forecast, pd.DataFrame(new_rows)], ignore_index=True)
+
+    return forecast, pd.DataFrame(audit_rows)
+
+
+def build_partner_absorb_summary(audit_df, location_name_map):
+    if audit_df is None or audit_df.empty:
+        return pd.DataFrame(
+            columns=[
+                "kfm_donor_id",
+                "kfm_donor_name",
+                "partner_ids",
+                "partner_names",
+                "auto_slots_moved",
+                "bike_slots_moved",
+                "total_slots_moved",
+            ]
+        )
+    summary = (
+        audit_df.groupby(["kfm_donor_id"], as_index=False)
+        .agg(
+            partner_ids=(
+                "partner_ids",
+                lambda s: ",".join(
+                    dict.fromkeys(
+                        pid for cell in s for pid in str(cell).split(",") if pid
+                    )
+                ),
+            ),
+            partner_names=(
+                "partner_names",
+                lambda s: ",".join(
+                    dict.fromkeys(
+                        name for cell in s for name in str(cell).split(",") if name
+                    )
+                ),
+            ),
+            auto_slots_moved=("auto_slots_moved", "sum"),
+            bike_slots_moved=("bike_slots_moved", "sum"),
+        )
+    )
+    summary["total_slots_moved"] = (
+        summary["auto_slots_moved"] + summary["bike_slots_moved"]
+    )
+    summary["kfm_donor_name"] = summary["kfm_donor_id"].map(
+        lambda x: location_name_map.get(str(x), str(x))
+    )
+    return summary.sort_values("total_slots_moved", ascending=False)
 
 
 def _hour_value(hour, minutes):
@@ -783,6 +1081,44 @@ def build_reports(
         .sort_values(["date", "location_id", "vehicle_type", "shift_start"])
     )
 
+    if {
+        "absorbed_partner_auto_slots",
+        "absorbed_partner_bike_slots",
+        "absorbed_partners",
+    }.issubset(forecast_df.columns):
+        absorb_by_day = (
+            forecast_df.assign(
+                date=pd.to_datetime(forecast_df["segment_datetime"]).dt.date.astype(str)
+            )
+            .groupby(["location_id", "date"], as_index=False)
+            .agg(
+                absorbed_partner_auto_slots=("absorbed_partner_auto_slots", "sum"),
+                absorbed_partner_bike_slots=("absorbed_partner_bike_slots", "sum"),
+                absorbed_partners=(
+                    "absorbed_partners",
+                    lambda s: ",".join(
+                        dict.fromkeys(
+                            name for cell in s for name in str(cell).split(",") if name
+                        )
+                    ),
+                ),
+            )
+        )
+        business_simple = business_simple.merge(
+            absorb_by_day,
+            on=["location_id", "date"],
+            how="left",
+        )
+        business_simple["absorbed_partner_auto_slots"] = (
+            business_simple["absorbed_partner_auto_slots"].fillna(0).astype(int)
+        )
+        business_simple["absorbed_partner_bike_slots"] = (
+            business_simple["absorbed_partner_bike_slots"].fillna(0).astype(int)
+        )
+        business_simple["absorbed_partners"] = business_simple[
+            "absorbed_partners"
+        ].fillna("")
+
     weekly_forecast = (
         forecast_df.groupby("business_group", as_index=False)
         .agg(
@@ -868,11 +1204,25 @@ def save_business_group_reports(reports, output_dir):
 def main():
     forecast_df = load_forecast(FORECAST_PATH)
     locations_df = load_locations_metadata()
+    group_to_members = build_group_to_members()
+    partner_map = load_partner_donor_map()
+    forecast_df, absorb_audit = absorb_partner_demand(
+        forecast_df,
+        partner_map,
+        group_to_members,
+    )
     location_name_map = build_location_name_map(forecast_df, locations_df)
+    # Enrich names for partners that were dropped from forecast.
+    for row in partner_map.itertuples(index=False):
+        location_name_map.setdefault(str(row.partner_location_id), str(row.partner_name))
+        if str(row.kfm_donor_id):
+            location_name_map.setdefault(
+                str(row.kfm_donor_id),
+                str(row.kfm_donor_name) or str(row.kfm_donor_id),
+            )
     business_group_map = build_business_group_map(forecast_df, locations_df)
     work_hours_df = load_work_hours()
     work_interval_lookup = build_work_interval_lookup(work_hours_df)
-    group_to_members = build_group_to_members()
     work_window_report = build_work_window_report(
         forecast_df,
         work_interval_lookup,
@@ -894,11 +1244,21 @@ def main():
         business_group_map,
         work_window_report,
     )
+    reports["partner_absorb_audit"] = absorb_audit
+    reports["partner_absorb_summary"] = build_partner_absorb_summary(
+        absorb_audit,
+        location_name_map,
+    )
     save_reports(reports, OUTPUT_DIR)
     save_business_group_reports(reports, OUTPUT_DIR)
 
     print(f"Saved business reports to: {OUTPUT_DIR}")
     print(reports["weekly_business_summary"].to_string(index=False))
+    print("\nPartner absorb summary:")
+    if reports["partner_absorb_summary"].empty:
+        print("(no partner slots absorbed)")
+    else:
+        print(reports["partner_absorb_summary"].to_string(index=False))
     print("\nDaily summary:")
     print(reports["daily_business_summary"].to_string(index=False))
 

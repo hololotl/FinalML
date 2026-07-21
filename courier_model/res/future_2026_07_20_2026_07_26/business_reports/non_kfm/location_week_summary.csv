@@ -1,0 +1,17 @@
+business_group,location_id,segment,vehicle_type,slots_to_create,overcoverage_hours,location_name,predicted_orders
+non_kfm,grp_19_54,medium,auto,24,80,Conversation Никитская + Maroon,158.05595549639176
+non_kfm,grp_19_54,medium,bike,14,42,Conversation Никитская + Maroon,158.05595549639176
+non_kfm,grp_102_125,medium,auto,14,0,Мясо&Рыба Тверская + Meraki,76.40301722479667
+non_kfm,597,low,auto,12,34,Rockets Тверской,27.840630894884292
+non_kfm,560,low,auto,7,46,Пафос,27.840630894884292
+non_kfm,558,low,auto,7,42,ЮГ 22,27.840630894884292
+non_kfm,grp_71_94,medium,bike,7,0,КО Medusa + КО Высота 5642,19.096353890330313
+non_kfm,119,medium,auto,7,49,Bluefin Успенское,17.760263985487033
+non_kfm,119,medium,bike,7,7,Bluefin Успенское,17.760263985487033
+non_kfm,grp_302_443,medium,auto,7,14,Ribambelle Шелепиха + Пинский доставка,14.977748245068327
+non_kfm,516,low,auto,7,0,La Raquette by Pinskiy&Co,14.514075290135478
+non_kfm,301,medium,auto,7,42,Биродром и Панчетта Дежнева,13.536714110773172
+non_kfm,36,medium,auto,6,4,Friends Forever Botanica,18.93600839426104
+non_kfm,grp_71_94,medium,auto,2,12,КО Medusa + КО Высота 5642,19.096353890330313
+non_kfm,36,medium,bike,1,0,Friends Forever Botanica,18.93600839426104
+non_kfm,301,medium,bike,1,0,Биродром и Панчетта Дежнева,13.536714110773172
