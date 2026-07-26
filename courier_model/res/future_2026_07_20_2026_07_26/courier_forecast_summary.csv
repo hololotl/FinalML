@@ -1,13 +1,13 @@
 metric,value
-rows,3654
+rows,3836
 history_start,2026-07-06 00:00:00+03:00
 history_finish,2026-07-20 00:00:00+03:00
-orders_prediction_sum,14739.814908837641
-auto_order_prediction_sum,6814.077088537789
-bike_order_prediction_sum,7925.737820299852
-auto_slots_needed_sum,1936
-bike_slots_needed_sum,2723
-total_slots_needed_sum,4659
+orders_prediction_sum,14668.451173046838
+auto_order_prediction_sum,6900.7538932013795
+bike_order_prediction_sum,7767.697279845458
+auto_slots_needed_sum,2289
+bike_slots_needed_sum,2484
+total_slots_needed_sum,4773
 safety_buffer,1.15
 slot_capacity_multiplier,1.3
 slot_rounding_mode,combined

@@ -338,12 +338,16 @@ location_id,segment_datetime,segment,time_segment,vehicle_type,actual_slots,shif
 33,2026-07-22 18:00:00+03:00,high,dinner,auto,2.0,6.0
 33,2026-07-22 18:00:00+03:00,high,dinner,bike,1.0,2.0
 33,2026-07-22 21:00:00+03:00,high,late_evening,auto,1.0,2.0
+34,2026-07-20 00:00:00+03:00,medium,block_00_06,auto,1.0,6.0
 34,2026-07-20 06:00:00+03:00,medium,block_06_12,auto,1.0,2.0
 34,2026-07-20 18:00:00+03:00,medium,block_18_24,auto,2.0,3.0
+34,2026-07-21 00:00:00+03:00,medium,block_00_06,auto,2.0,7.0
 34,2026-07-21 06:00:00+03:00,medium,block_06_12,auto,1.0,2.0
 34,2026-07-21 18:00:00+03:00,medium,block_18_24,auto,2.0,3.0
+34,2026-07-22 00:00:00+03:00,medium,block_00_06,auto,2.0,7.0
 34,2026-07-22 06:00:00+03:00,medium,block_06_12,auto,1.0,2.0
 34,2026-07-22 18:00:00+03:00,medium,block_18_24,auto,1.0,1.0
+34,2026-07-23 00:00:00+03:00,medium,block_00_06,auto,1.0,6.0
 34,2026-07-23 06:00:00+03:00,medium,block_06_12,auto,1.0,2.0
 348,2026-07-20 06:00:00+03:00,medium,block_06_12,auto,1.0,4.0
 348,2026-07-20 12:00:00+03:00,medium,block_12_18,auto,1.0,6.0

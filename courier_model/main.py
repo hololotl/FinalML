@@ -57,6 +57,10 @@ AUTO = "auto"
 BIKE = "bike"
 VEHICLE_TYPES = [AUTO, BIKE]
 
+TRANSPORT_AUTO_BIKE = 0
+TRANSPORT_AUTO = 1
+TRANSPORT_BIKE = 2
+
 MERGED_LOCATION_PAIRS = [
     ("19", "54", 387),
     ("71", "94", 200),
@@ -124,6 +128,158 @@ def build_merged_location_groups():
             location_to_group[member] = group_id
 
     return location_to_group
+
+
+def build_group_to_members(location_to_group):
+    group_to_members = {}
+    for member_id, group_id in location_to_group.items():
+        group_to_members.setdefault(str(group_id), []).append(str(member_id))
+    return group_to_members
+
+
+def load_location_transport(engine):
+    transport_df = pd.read_sql_query(
+        text(
+            "SELECT id AS location_id, COALESCE(transport, 0) AS transport "
+            "FROM locations"
+        ),
+        engine,
+    )
+    if transport_df.empty:
+        return {}
+    transport_df["location_id"] = transport_df["location_id"].astype(str)
+    return {
+        str(row.location_id): int(row.transport)
+        for row in transport_df.itertuples(index=False)
+    }
+
+
+def resolve_location_transport(location_id, transport_by_location, group_to_members):
+    location_id = str(location_id)
+    if location_id.startswith("grp_"):
+        member_transports = [
+            int(transport_by_location.get(member_id, TRANSPORT_AUTO_BIKE))
+            for member_id in group_to_members.get(location_id, [])
+        ]
+        if not member_transports:
+            return TRANSPORT_AUTO_BIKE
+        if all(value == TRANSPORT_AUTO for value in member_transports):
+            return TRANSPORT_AUTO
+        if all(value == TRANSPORT_BIKE for value in member_transports):
+            return TRANSPORT_BIKE
+        return TRANSPORT_AUTO_BIKE
+    return int(transport_by_location.get(location_id, TRANSPORT_AUTO_BIKE))
+
+
+def transport_allowed_vehicles(transport):
+    if transport == TRANSPORT_AUTO:
+        return {AUTO}
+    if transport == TRANSPORT_BIKE:
+        return {BIKE}
+    return {AUTO, BIKE}
+
+
+def compute_vehicle_slots(auto_orders, bike_orders, slot_capacity):
+    if SLOT_ROUNDING_MODE == "combined":
+        auto_raw_slots = raw_slot_demand(auto_orders, slot_capacity[AUTO])
+        bike_raw_slots = raw_slot_demand(bike_orders, slot_capacity[BIKE])
+        return allocate_slots_from_raw_demand(auto_raw_slots, bike_raw_slots)
+    return (
+        required_slots(auto_orders, slot_capacity[AUTO]),
+        required_slots(bike_orders, slot_capacity[BIKE]),
+    )
+
+
+def apply_transport_to_slot_plan(
+    transport,
+    prediction,
+    shares,
+    slot_capacity,
+):
+    allowed = transport_allowed_vehicles(transport)
+    prediction = max(float(prediction), 0.0)
+
+    if allowed == {AUTO}:
+        shares = {AUTO: 1.0, BIKE: 0.0}
+        auto_orders = prediction
+        bike_orders = 0.0
+    elif allowed == {BIKE}:
+        shares = {AUTO: 0.0, BIKE: 1.0}
+        auto_orders = 0.0
+        bike_orders = prediction
+    else:
+        auto_orders = prediction * shares[AUTO]
+        bike_orders = prediction * shares[BIKE]
+
+    auto_slots, bike_slots = compute_vehicle_slots(
+        auto_orders,
+        bike_orders,
+        slot_capacity,
+    )
+    if AUTO not in allowed:
+        auto_orders = 0.0
+        auto_slots = 0
+        shares[AUTO] = 0.0
+    if BIKE not in allowed:
+        bike_orders = 0.0
+        bike_slots = 0
+        shares[BIKE] = 0.0
+
+    return shares, auto_orders, bike_orders, auto_slots, bike_slots
+
+
+def enforce_transport_on_forecast(
+    forecast_df,
+    transport_by_location,
+    group_to_members,
+):
+    """Zero disallowed vehicle columns without rebuilding slot demand."""
+    if forecast_df.empty:
+        return forecast_df
+
+    forecast = forecast_df.copy()
+    for idx, row in forecast.iterrows():
+        transport = resolve_location_transport(
+            row[LOCATION_COLUMN],
+            transport_by_location,
+            group_to_members,
+        )
+        allowed = transport_allowed_vehicles(transport)
+        if allowed == {AUTO, BIKE}:
+            continue
+
+        auto_slots = int(row.get("auto_slots_needed", 0) or 0)
+        bike_slots = int(row.get("bike_slots_needed", 0) or 0)
+        auto_orders = float(row.get("auto_order_prediction", 0) or 0)
+        bike_orders = float(row.get("bike_order_prediction", 0) or 0)
+
+        if AUTO not in allowed:
+            auto_slots = 0
+            auto_orders = 0.0
+        if BIKE not in allowed:
+            bike_slots = 0
+            bike_orders = 0.0
+
+        total_orders = float(row.get("orders_prediction", 0) or 0)
+        if allowed == {AUTO}:
+            auto_orders = total_orders
+            forecast.at[idx, "auto_order_share"] = 1.0
+            forecast.at[idx, "bike_order_share"] = 0.0
+        elif allowed == {BIKE}:
+            bike_orders = total_orders
+            forecast.at[idx, "auto_order_share"] = 0.0
+            forecast.at[idx, "bike_order_share"] = 1.0
+
+        forecast.at[idx, "auto_order_prediction"] = auto_orders
+        forecast.at[idx, "bike_order_prediction"] = bike_orders
+        forecast.at[idx, "auto_slots_needed"] = auto_slots
+        forecast.at[idx, "bike_slots_needed"] = bike_slots
+        forecast.at[idx, "total_slots_needed"] = auto_slots + bike_slots
+        forecast.at[idx, "auto_couriers_needed"] = auto_slots
+        forecast.at[idx, "bike_couriers_needed"] = bike_slots
+        forecast.at[idx, "total_couriers_needed"] = auto_slots + bike_slots
+
+    return forecast
 
 
 def apply_location_grouping(df, location_to_group):
@@ -789,6 +945,8 @@ def build_courier_forecast(
     segment_productivity,
     time_productivity,
     global_productivity,
+    transport_by_location=None,
+    group_to_members=None,
 ):
     location_share_lookup = make_lookup(
         location_share,
@@ -849,18 +1007,19 @@ def build_courier_forecast(
             slot_capacity_source[vehicle_type] = source
 
         prediction = max(float(row["prediction"]), 0.0)
-        auto_orders = prediction * shares[AUTO]
-        bike_orders = prediction * shares[BIKE]
-        if SLOT_ROUNDING_MODE == "combined":
-            auto_raw_slots = raw_slot_demand(auto_orders, slot_capacity[AUTO])
-            bike_raw_slots = raw_slot_demand(bike_orders, slot_capacity[BIKE])
-            auto_slots, bike_slots = allocate_slots_from_raw_demand(
-                auto_raw_slots,
-                bike_raw_slots,
+        transport = resolve_location_transport(
+            row[LOCATION_COLUMN],
+            transport_by_location or {},
+            group_to_members or {},
+        )
+        shares, auto_orders, bike_orders, auto_slots, bike_slots = (
+            apply_transport_to_slot_plan(
+                transport,
+                prediction,
+                shares,
+                slot_capacity,
             )
-        else:
-            auto_slots = required_slots(auto_orders, slot_capacity[AUTO])
-            bike_slots = required_slots(bike_orders, slot_capacity[BIKE])
+        )
 
         rows.append({
             LOCATION_COLUMN: row[LOCATION_COLUMN],
@@ -1073,6 +1232,8 @@ def main():
     )
 
     engine = build_engine()
+    transport_by_location = load_location_transport(engine)
+    group_to_members = build_group_to_members(location_to_group)
     order_df = load_order_vehicle_history(engine, history_start_ms, history_finish_ms)
     order_df = prepare_order_history(order_df, location_to_group, location_segment_map)
     order_counts, location_share, segment_share, global_share = build_order_share_tables(
@@ -1101,6 +1262,8 @@ def main():
         segment_productivity,
         time_productivity,
         global_productivity,
+        transport_by_location,
+        group_to_members,
     )
     prediction_start = pred_df["segment_datetime"].min()
     prediction_finish = pred_df["segment_end"].max()

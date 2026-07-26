@@ -74,13 +74,22 @@ def load_locations_metadata():
     locations_df = pd.read_sql_query(
         text(
             "SELECT id AS location_id, name AS location_name, "
-            "organization AS organization_id FROM locations"
+            "organization AS organization_id, COALESCE(transport, 0) AS transport "
+            "FROM locations"
         ),
         engine,
     )
     locations_df["location_id"] = locations_df["location_id"].astype(str)
     locations_df["organization_id"] = locations_df["organization_id"].astype(str)
+    locations_df["transport"] = locations_df["transport"].astype(int)
     return locations_df
+
+
+def build_location_transport_lookup(locations_df):
+    return {
+        str(row.location_id): int(row.transport)
+        for row in locations_df.itertuples(index=False)
+    }
 
 
 def load_work_hours():
@@ -1209,6 +1218,12 @@ def main():
     forecast_df, absorb_audit = absorb_partner_demand(
         forecast_df,
         partner_map,
+        group_to_members,
+    )
+    transport_by_location = build_location_transport_lookup(locations_df)
+    forecast_df = cm.enforce_transport_on_forecast(
+        forecast_df,
+        transport_by_location,
         group_to_members,
     )
     location_name_map = build_location_name_map(forecast_df, locations_df)
