@@ -21,7 +21,9 @@ OUTPUT_DIR = Path(
     )
 )
 BUSINESS_SHIFT_BUILD_MODE = os.getenv("BUSINESS_SHIFT_BUILD_MODE", "demand_layers")
-BUSINESS_LAYER_ANCHOR_TO_OPEN = os.getenv("BUSINESS_LAYER_ANCHOR_TO_OPEN", "1") == "1"
+BUSINESS_LAYER_ANCHOR_TO_OPEN = os.getenv("BUSINESS_LAYER_ANCHOR_TO_OPEN", "0") == "1"
+BUSINESS_LAYER_USE_TEMPLATES = os.getenv("BUSINESS_LAYER_USE_TEMPLATES", "1") == "1"
+BUSINESS_LAYER_FILL_GAPS = os.getenv("BUSINESS_LAYER_FILL_GAPS", "0") == "1"
 MAX_SHIFT_HOURS = int(os.getenv("MAX_SHIFT_HOURS", "12"))
 PARTNER_DONOR_MAP_PATH = Path(
     os.getenv(
@@ -608,6 +610,13 @@ def build_work_window_report(forecast_df, work_interval_lookup, group_to_members
     return pd.DataFrame(rows)
 
 
+def canonical_segment_start_hour(segment, time_segment, segment_datetime):
+    start_map = dict(cm.segment_start_hours(segment))
+    if time_segment in start_map:
+        return int(start_map[time_segment])
+    return int(pd.Timestamp(segment_datetime).hour)
+
+
 def expand_to_hourly_demand(forecast_df):
     rows = []
     for row in forecast_df.itertuples(index=False):
@@ -616,10 +625,16 @@ def expand_to_hourly_demand(forecast_df):
         if hours <= 0:
             continue
 
+        start_hour = canonical_segment_start_hour(
+            row.segment,
+            row.time_segment,
+            segment_start,
+        )
+        business_date = segment_start.date().isoformat()
         for hour_offset in range(hours):
-            hour_start = segment_start + pd.Timedelta(hours=hour_offset)
-            business_date = segment_start.date().isoformat()
-            hour = int(hour_start.hour)
+            hour = start_hour + hour_offset
+            if hour < 0 or hour >= 24:
+                continue
             rows.append({
                 "location_id": str(row.location_id),
                 "date": business_date,
@@ -664,6 +679,46 @@ def build_hour_arrays(group):
         demand[int(row.hour)] = max(demand[int(row.hour)], int(row.slots_needed))
         orders[int(row.hour)] += float(row.predicted_orders)
     return demand, orders
+
+
+def build_single_courier_open_shifts(
+    location_id,
+    date,
+    segment,
+    vehicle_type,
+    demand,
+    hourly_orders,
+    open_intervals,
+):
+    rows = []
+    candidate_intervals = open_intervals or [(0.0, 24.0)]
+    for interval_start, interval_finish in candidate_intervals:
+        start_bound = int(np.ceil(interval_start))
+        finish_bound = int(np.floor(interval_finish))
+        if finish_bound <= start_bound:
+            continue
+
+        active_hours = int((demand[start_bound:finish_bound] > 0).sum())
+        duration_hours = finish_bound - start_bound
+        rows.append({
+            "location_id": location_id,
+            "date": date,
+            "segment": segment,
+            "vehicle_type": vehicle_type,
+            "shift_template": "full_open_window",
+            "shift_start": f"{start_bound:02d}:00",
+            "shift_finish": f"{finish_bound:02d}:00",
+            "shift_hours": duration_hours,
+            "open_intervals": format_intervals(candidate_intervals),
+            "slots_to_create": 1,
+            "covered_need_hours": active_hours,
+            "template_hours": duration_hours,
+            "overcoverage_hours": duration_hours - active_hours,
+            "covered_predicted_orders": float(
+                hourly_orders[start_bound:finish_bound].sum()
+            ),
+        })
+    return rows
 
 
 def choose_shift_template(residual, open_intervals):
@@ -760,6 +815,17 @@ def build_shift_plan_for_group(
             residual[hour] = 0
             hourly_orders[hour] = 0
 
+    if int(residual.max()) == 1:
+        return build_single_courier_open_shifts(
+            location_id,
+            date,
+            segment,
+            vehicle_type,
+            residual,
+            hourly_orders,
+            open_intervals,
+        )
+
     if BUSINESS_SHIFT_BUILD_MODE == "demand_layers":
         return build_layered_shift_plan_for_group(
             location_id,
@@ -808,6 +874,75 @@ def build_shift_plan_for_group(
     return rows
 
 
+def _layer_active_finish_hour(demand, start_bound, finish_bound, layer):
+    layer_slice = demand[start_bound:finish_bound] >= layer
+    if not layer_slice.any():
+        return start_bound
+    return start_bound + int(np.where(layer_slice)[0].max()) + 1
+
+
+def _append_shift_row(
+    rows,
+    location_id,
+    date,
+    segment,
+    vehicle_type,
+    demand,
+    hourly_orders,
+    open_intervals_display,
+    shift_start,
+    shift_finish,
+    layer,
+    template_name,
+    enforce_max_shift_hours=True,
+):
+    if shift_finish <= shift_start:
+        return
+    if enforce_max_shift_hours:
+        chunks = split_shift_into_max_hours(
+            shift_start,
+            shift_finish,
+            MAX_SHIFT_HOURS,
+        )
+    else:
+        chunks = [(int(shift_start), int(shift_finish))]
+    for chunk_start, chunk_finish in chunks:
+        active_hours = int((demand[chunk_start:chunk_finish] >= layer).sum())
+        if active_hours <= 0:
+            continue
+        duration_hours = chunk_finish - chunk_start
+        rows.append({
+            "location_id": location_id,
+            "date": date,
+            "segment": segment,
+            "vehicle_type": vehicle_type,
+            "shift_template": template_name,
+            "shift_start": f"{chunk_start:02d}:00",
+            "shift_finish": f"{chunk_finish:02d}:00",
+            "shift_hours": duration_hours,
+            "open_intervals": format_intervals(open_intervals_display),
+            "slots_to_create": 1,
+            "covered_need_hours": active_hours,
+            "template_hours": duration_hours,
+            "overcoverage_hours": duration_hours - active_hours,
+            "covered_predicted_orders": float(
+                hourly_orders[chunk_start:chunk_finish].sum()
+            ),
+        })
+
+
+def _iter_contiguous_true_runs(mask):
+    start = None
+    for index, value in enumerate(mask):
+        if value and start is None:
+            start = index
+        elif not value and start is not None:
+            yield start, index
+            start = None
+    if start is not None:
+        yield start, len(mask)
+
+
 def _build_layer_rows_for_interval(
     location_id,
     date,
@@ -831,45 +966,135 @@ def _build_layer_rows_for_interval(
         if not layer_mask.any():
             continue
 
-        active_offsets = np.where(layer_mask)[0]
-        shift_start = start_bound + int(active_offsets.min())
-        shift_finish = start_bound + int(active_offsets.max()) + 1
-
-        if BUSINESS_LAYER_ANCHOR_TO_OPEN:
-            shift_start = start_bound
-        if interval_finish - shift_finish <= 1:
-            shift_finish = finish_bound
-
-        if shift_finish <= shift_start:
+        if BUSINESS_LAYER_USE_TEMPLATES:
+            active_finish = _layer_active_finish_hour(
+                demand,
+                start_bound,
+                finish_bound,
+                layer,
+            )
+            if layer == 1:
+                shift_start = start_bound
+                shift_finish = finish_bound
+                template_name = "full_open_window"
+                enforce_max_shift_hours = True
+            else:
+                residual = np.zeros(24, dtype=int)
+                residual[start_bound:finish_bound] = layer_mask.astype(int)
+                chosen = choose_shift_template(residual, [open_interval])
+                if chosen is None:
+                    chosen = choose_fallback_shift(residual, [open_interval])
+                if chosen is None:
+                    continue
+                template_name, shift_start, shift_finish, _ = chosen
+                shift_finish = max(int(shift_finish), int(active_finish))
+                shift_finish = min(int(shift_finish), int(finish_bound))
+                enforce_max_shift_hours = True
+            _append_shift_row(
+                rows,
+                location_id,
+                date,
+                segment,
+                vehicle_type,
+                demand,
+                hourly_orders,
+                open_intervals_display,
+                shift_start,
+                shift_finish,
+                layer,
+                template_name,
+                enforce_max_shift_hours=enforce_max_shift_hours,
+            )
             continue
 
-        for chunk_start, chunk_finish in split_shift_into_max_hours(
-            shift_start,
-            shift_finish,
-            MAX_SHIFT_HOURS,
-        ):
-            active_hours = int((demand[chunk_start:chunk_finish] >= layer).sum())
-            if active_hours <= 0:
-                continue
-            duration_hours = chunk_finish - chunk_start
-            rows.append({
-                "location_id": location_id,
-                "date": date,
-                "segment": segment,
-                "vehicle_type": vehicle_type,
-                "shift_template": "demand_layer",
-                "shift_start": f"{chunk_start:02d}:00",
-                "shift_finish": f"{chunk_finish:02d}:00",
-                "shift_hours": duration_hours,
-                "open_intervals": format_intervals(open_intervals_display),
-                "slots_to_create": 1,
-                "covered_need_hours": active_hours,
-                "template_hours": duration_hours,
-                "overcoverage_hours": duration_hours - active_hours,
-                "covered_predicted_orders": float(
-                    hourly_orders[chunk_start:chunk_finish].sum()
-                ),
-            })
+        for run_start, run_finish in _iter_contiguous_true_runs(layer_mask):
+            shift_start = start_bound + int(run_start)
+            shift_finish = start_bound + int(run_finish)
+
+            if BUSINESS_LAYER_ANCHOR_TO_OPEN and run_start == 0:
+                shift_start = start_bound
+            if interval_finish - shift_finish <= 1:
+                shift_finish = finish_bound
+
+            _append_shift_row(
+                rows,
+                location_id,
+                date,
+                segment,
+                vehicle_type,
+                demand,
+                hourly_orders,
+                open_intervals_display,
+                shift_start,
+                shift_finish,
+                layer,
+                "demand_layer",
+            )
+
+    return rows
+
+
+def _fill_shift_coverage_gaps(
+    rows,
+    location_id,
+    date,
+    segment,
+    vehicle_type,
+    demand,
+    hourly_orders,
+    open_intervals,
+):
+    if not rows:
+        return rows
+
+    coverage = np.zeros(24, dtype=int)
+    for row in rows:
+        shift_start = int(str(row["shift_start"]).split(":")[0])
+        shift_finish = int(str(row["shift_finish"]).split(":")[0])
+        coverage[shift_start:shift_finish] += 1
+
+    for interval_start, interval_finish in open_intervals or [(0.0, 24.0)]:
+        start_bound = int(np.ceil(interval_start))
+        finish_bound = int(np.floor(interval_finish))
+        if finish_bound <= start_bound:
+            continue
+
+        residual = np.maximum(
+            demand[start_bound:finish_bound] - coverage[start_bound:finish_bound],
+            0,
+        )
+        while residual.max() > 0:
+            padded = np.zeros(24, dtype=int)
+            padded[start_bound:finish_bound] = residual
+            chosen = choose_fallback_shift(
+                padded,
+                [(interval_start, interval_finish)],
+            )
+            if chosen is None:
+                break
+            template_name, shift_start, shift_finish, _ = chosen
+            layer = int(residual.max())
+            _append_shift_row(
+                rows,
+                location_id,
+                date,
+                segment,
+                vehicle_type,
+                demand,
+                hourly_orders,
+                open_intervals,
+                shift_start,
+                shift_finish,
+                layer,
+                template_name,
+            )
+            slice_start = shift_start - start_bound
+            slice_finish = shift_finish - start_bound
+            residual[slice_start:slice_finish] = np.maximum(
+                residual[slice_start:slice_finish] - 1,
+                0,
+            )
+            coverage[shift_start:shift_finish] += 1
 
     return rows
 
@@ -897,6 +1122,17 @@ def build_layered_shift_plan_for_group(
                 open_interval,
                 candidate_intervals,
             )
+        )
+    if BUSINESS_LAYER_USE_TEMPLATES and BUSINESS_LAYER_FILL_GAPS:
+        rows = _fill_shift_coverage_gaps(
+            rows,
+            location_id,
+            date,
+            segment,
+            vehicle_type,
+            demand,
+            hourly_orders,
+            candidate_intervals,
         )
     return rows
 

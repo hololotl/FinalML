@@ -1,19 +1,18 @@
 business_group,location_id,segment,vehicle_type,slots_to_create,overcoverage_hours,location_name,predicted_orders
-non_kfm,grp_19_54,medium,auto,24,80,Conversation Никитская + Maroon,158.05595549639176
-non_kfm,grp_19_54,medium,bike,14,42,Conversation Никитская + Maroon,158.05595549639176
-non_kfm,grp_102_125,medium,auto,14,0,Мясо&Рыба Тверская + Meraki,76.88373860211983
-non_kfm,36,medium,auto,14,0,Friends Forever Botanica,18.93600839426104
-non_kfm,114,low,auto,11,42,Bluefin Скаковая,22.589728166689998
+non_kfm,grp_19_54,medium,auto,27,36,Conversation Никитская + Maroon,158.05595549639176
+non_kfm,grp_102_125,medium,auto,7,0,Мясо&Рыба Тверская + Meraki,76.88373860211983
 non_kfm,560,low,auto,7,56,Пафос,22.918069578153798
+non_kfm,114,low,auto,7,42,Bluefin Скаковая,22.589728166689998
 non_kfm,558,low,auto,7,42,ЮГ 22,22.589728166689998
-non_kfm,597,low,auto,7,14,Rockets Тверской,22.589728166689998
-non_kfm,grp_71_94,medium,bike,7,0,КО Medusa + КО Высота 5642,19.096353890330313
+non_kfm,597,low,auto,7,63,Rockets Тверской,22.589728166689998
+non_kfm,grp_71_94,medium,bike,7,10,КО Medusa + КО Высота 5642,19.096353890330313
+non_kfm,36,medium,auto,7,0,Friends Forever Botanica,18.93600839426104
 non_kfm,119,medium,auto,7,7,Bluefin Успенское,17.760263985487033
-non_kfm,grp_302_443,medium,auto,7,14,Ribambelle Шелепиха + Пинский доставка,14.977748245068327
-non_kfm,516,low,auto,7,0,La Raquette by Pinskiy&Co,14.514075290135478
+non_kfm,grp_302_443,medium,auto,7,24,Ribambelle Шелепиха + Пинский доставка,14.977748245068327
+non_kfm,516,low,auto,7,28,La Raquette by Pinskiy&Co,14.514075290135478
 non_kfm,301,medium,auto,7,42,Биродром и Панчетта Дежнева,13.536714110773172
-non_kfm,222,low,auto,7,0,Ирис Химки,10.46459669413425
-non_kfm,100,medium,auto,7,14,Колбасный Цех / Магадан,8.67225326341985
+non_kfm,222,low,auto,7,77,Ирис Химки,10.46459669413425
+non_kfm,100,medium,auto,7,44,Колбасный Цех / Магадан,8.67225326341985
 non_kfm,grp_71_94,medium,auto,2,12,КО Medusa + КО Высота 5642,19.096353890330313
-non_kfm,301,medium,bike,1,0,Биродром и Панчетта Дежнева,13.536714110773172
-non_kfm,53,low,auto,1,0,IZUMI,9.06973256873359
+non_kfm,53,low,auto,2,12,IZUMI,9.06973256873359
+non_kfm,301,medium,bike,1,5,Биродром и Панчетта Дежнева,13.536714110773172

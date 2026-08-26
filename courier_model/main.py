@@ -862,16 +862,63 @@ def make_lookup(df, key_cols, value_col):
     }
 
 
+def build_location_overall_share_lookup(order_df):
+    if order_df.empty:
+        return {}
+
+    grouped = (
+        order_df.assign(**{LOCATION_COLUMN: order_df[LOCATION_COLUMN].astype(str)})
+        .groupby([LOCATION_COLUMN, "vehicle_type"], as_index=False)
+        .size()
+        .rename(columns={"size": "orders"})
+    )
+    lookup = {}
+    for location_id, group in grouped.groupby(LOCATION_COLUMN):
+        total = float(group["orders"].sum())
+        if total <= 0:
+            continue
+        for row in group.itertuples(index=False):
+            lookup[(str(location_id), row.vehicle_type)] = float(row.orders / total)
+    return lookup
+
+
+def build_schedule_vehicle_share_lookup(schedule_df):
+    """When a location always runs only auto or only bike, lock the split."""
+    if schedule_df.empty:
+        return {}
+
+    counts = (
+        schedule_df.groupby([schedule_df[LOCATION_COLUMN].astype(str), "vehicle_type"])
+        .size()
+        .reset_index(name="shifts")
+    )
+    lookup = {}
+    for location_id, group in counts.groupby(LOCATION_COLUMN):
+        auto_shifts = int(group.loc[group["vehicle_type"] == AUTO, "shifts"].sum())
+        bike_shifts = int(group.loc[group["vehicle_type"] == BIKE, "shifts"].sum())
+        if bike_shifts == 0 and auto_shifts > 0:
+            lookup[str(location_id)] = {AUTO: 1.0, BIKE: 0.0}
+        elif auto_shifts == 0 and bike_shifts > 0:
+            lookup[str(location_id)] = {AUTO: 0.0, BIKE: 1.0}
+    return lookup
+
+
 def lookup_vehicle_share(
     row,
     vehicle_type,
     location_share_lookup,
     segment_share_lookup,
     global_share,
+    location_overall_share_lookup=None,
 ):
-    key = (row[LOCATION_COLUMN], row["time_segment"], vehicle_type)
+    location_id = str(row[LOCATION_COLUMN])
+    key = (location_id, row["time_segment"], vehicle_type)
     if key in location_share_lookup:
         return location_share_lookup[key]
+    if location_overall_share_lookup:
+        overall_key = (location_id, vehicle_type)
+        if overall_key in location_overall_share_lookup:
+            return location_overall_share_lookup[overall_key]
     segment_key = (row["segment"], row["time_segment"], vehicle_type)
     if segment_key in segment_share_lookup:
         return segment_share_lookup[segment_key]
@@ -947,6 +994,8 @@ def build_courier_forecast(
     global_productivity,
     transport_by_location=None,
     group_to_members=None,
+    location_overall_share_lookup=None,
+    schedule_vehicle_share_lookup=None,
 ):
     location_share_lookup = make_lookup(
         location_share,
@@ -983,6 +1032,7 @@ def build_courier_forecast(
                 location_share_lookup,
                 segment_share_lookup,
                 global_share,
+                location_overall_share_lookup,
             )
             for vehicle_type in VEHICLE_TYPES
         }
@@ -991,6 +1041,18 @@ def build_courier_forecast(
             shares = {AUTO: DEFAULT_AUTO_SHARE, BIKE: 1 - DEFAULT_AUTO_SHARE}
             total_share = 1.0
         shares = {k: v / total_share for k, v in shares.items()}
+
+        transport = resolve_location_transport(
+            row[LOCATION_COLUMN],
+            transport_by_location or {},
+            group_to_members or {},
+        )
+        if transport == TRANSPORT_AUTO_BIKE:
+            schedule_shares = (schedule_vehicle_share_lookup or {}).get(
+                str(row[LOCATION_COLUMN])
+            )
+            if schedule_shares:
+                shares = schedule_shares.copy()
 
         slot_capacity = {}
         slot_capacity_source = {}
@@ -1007,11 +1069,6 @@ def build_courier_forecast(
             slot_capacity_source[vehicle_type] = source
 
         prediction = max(float(row["prediction"]), 0.0)
-        transport = resolve_location_transport(
-            row[LOCATION_COLUMN],
-            transport_by_location or {},
-            group_to_members or {},
-        )
         shares, auto_orders, bike_orders, auto_slots, bike_slots = (
             apply_transport_to_slot_plan(
                 transport,
@@ -1236,12 +1293,14 @@ def main():
     group_to_members = build_group_to_members(location_to_group)
     order_df = load_order_vehicle_history(engine, history_start_ms, history_finish_ms)
     order_df = prepare_order_history(order_df, location_to_group, location_segment_map)
+    location_overall_share_lookup = build_location_overall_share_lookup(order_df)
     order_counts, location_share, segment_share, global_share = build_order_share_tables(
         order_df
     )
 
     schedule_df = load_schedule_history(engine, history_start_ms, history_finish_ms)
     schedule_df = prepare_schedule_history(schedule_df, location_to_group)
+    schedule_vehicle_share_lookup = build_schedule_vehicle_share_lookup(schedule_df)
     courier_equiv = build_courier_equivalent_by_segment(
         schedule_df,
         history_segment_grid,
@@ -1264,6 +1323,8 @@ def main():
         global_productivity,
         transport_by_location,
         group_to_members,
+        location_overall_share_lookup,
+        schedule_vehicle_share_lookup,
     )
     prediction_start = pred_df["segment_datetime"].min()
     prediction_finish = pred_df["segment_end"].max()
