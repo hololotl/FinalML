@@ -5,6 +5,21 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine, text
 
+try:
+    from .partner_grouping import (
+        apply_partner_grouping,
+        build_grouping_config_audit,
+        load_partner_grouping,
+        normalize_location_id,
+    )
+except ImportError:
+    from partner_grouping import (
+        apply_partner_grouping,
+        build_grouping_config_audit,
+        load_partner_grouping,
+        normalize_location_id,
+    )
+
 
 DB_URL = os.getenv(
     "DB_URL",
@@ -24,6 +39,14 @@ PREDICTIONS_PATH = Path(
     )
 )
 OUTPUT_DIR = Path(os.getenv("COURIER_OUTPUT_DIR", SCRIPT_DIR / "res"))
+DELIVERY_DURATION_PATH = Path(
+    os.getenv(
+        "DELIVERY_DURATION_PATH",
+        OUTPUT_DIR
+        / "delivery_duration"
+        / "delivery_duration_by_planning_time_segment.csv",
+    )
+)
 
 HISTORY_LOOKBACK_DAYS = int(os.getenv("COURIER_HISTORY_LOOKBACK_DAYS", "14"))
 SAFETY_BUFFER = float(os.getenv("COURIER_SAFETY_BUFFER", "1.15"))
@@ -52,6 +75,11 @@ PRODUCTIVITY_MIN = float(os.getenv("PRODUCTIVITY_MIN", "1.0"))
 PRODUCTIVITY_MAX = float(os.getenv("PRODUCTIVITY_MAX", "30.0"))
 SLOT_CAPACITY_MULTIPLIER = float(os.getenv("SLOT_CAPACITY_MULTIPLIER", "1.30"))
 SLOT_ROUNDING_MODE = os.getenv("SLOT_ROUNDING_MODE", "combined")
+CYCLE_TIME_PERCENTILE = os.getenv("CYCLE_TIME_PERCENTILE", "p80_minutes")
+CYCLE_TIME_RETURN_MULTIPLIER = float(
+    os.getenv("CYCLE_TIME_RETURN_MULTIPLIER", "2.0")
+)
+MIN_CYCLE_TIME_ORDERS = int(os.getenv("MIN_CYCLE_TIME_ORDERS", "30"))
 
 AUTO = "auto"
 BIKE = "bike"
@@ -61,80 +89,18 @@ TRANSPORT_AUTO_BIKE = 0
 TRANSPORT_AUTO = 1
 TRANSPORT_BIKE = 2
 
-MERGED_LOCATION_PAIRS = [
-    ("19", "54", 387),
-    ("71", "94", 200),
-    ("102", "125", 187),
-    ("288", "424", 150),
-    ("62", "140", 142),
-    ("136", "292", 134),
-    ("187", "296", 89),
-    ("130", "139", 62),
-    ("122", "131", 32),
-    ("98", "298", 22),
-    ("336", "340", 12),
-    ("302", "443", 4),
-    ("343", "346", 2),
-    ("420", "481", 2),
-    ("341", "347", 2),
-]
-
-
 def build_engine():
     return create_engine(DB_URL)
 
 
-def normalize_location_id(value):
-    value_str = str(value).strip()
-    if value_str.endswith(".0"):
-        candidate = value_str[:-2]
-        if candidate.isdigit():
-            return candidate
-    return value_str
-
-
 def build_merged_location_groups():
-    parent = {}
-
-    def find(x):
-        parent.setdefault(x, x)
-        if parent[x] != x:
-            parent[x] = find(parent[x])
-        return parent[x]
-
-    def union(a, b):
-        ra = find(a)
-        rb = find(b)
-        if ra != rb:
-            parent[rb] = ra
-
-    for left_id, right_id, _ in MERGED_LOCATION_PAIRS:
-        union(normalize_location_id(left_id), normalize_location_id(right_id))
-
-    members_by_root = {}
-    for left_id, right_id, _ in MERGED_LOCATION_PAIRS:
-        for location_id in [
-            normalize_location_id(left_id),
-            normalize_location_id(right_id),
-        ]:
-            root = find(location_id)
-            members_by_root.setdefault(root, set()).add(location_id)
-
-    location_to_group = {}
-    for members in members_by_root.values():
-        sorted_members = sorted(members, key=int)
-        group_id = "grp_" + "_".join(sorted_members)
-        for member in sorted_members:
-            location_to_group[member] = group_id
-
-    return location_to_group
+    """Compatibility wrapper; grouping now comes only from partner_donor_map.csv."""
+    return load_partner_grouping().location_to_planning
 
 
 def build_group_to_members(location_to_group):
-    group_to_members = {}
-    for member_id, group_id in location_to_group.items():
-        group_to_members.setdefault(str(group_id), []).append(str(member_id))
-    return group_to_members
+    grouping = load_partner_grouping()
+    return grouping.planning_to_members
 
 
 def load_location_transport(engine):
@@ -418,6 +384,133 @@ def load_predictions(path):
         unit="h",
     )
     return pred_df
+
+
+def aggregate_predictions_to_planning_locations(pred_df, grouping):
+    if pred_df.empty:
+        return pred_df.copy(), pd.DataFrame()
+
+    source = pred_df.copy()
+    source[LOCATION_COLUMN] = source[LOCATION_COLUMN].map(normalize_location_id)
+    legacy_groups = source[LOCATION_COLUMN].str.startswith("grp_")
+    if legacy_groups.any():
+        legacy_ids = sorted(source.loc[legacy_groups, LOCATION_COLUMN].unique())
+        raise ValueError(
+            "Forecast contains legacy grp_* location IDs. Retrain and regenerate "
+            f"week_model with partner_donor_map.csv first: {legacy_ids[:10]}"
+        )
+
+    source["source_location_id"] = source[LOCATION_COLUMN]
+    source["planning_location_id"] = source["source_location_id"].map(
+        grouping.planning_location_id
+    )
+    source["is_absorbed_partner"] = (
+        source["source_location_id"] != source["planning_location_id"]
+    )
+
+    partner_names = grouping.partner_name_by_id
+    source["absorbed_partner_name"] = source["source_location_id"].map(
+        lambda location_id: partner_names.get(location_id, location_id)
+    )
+
+    audit = source.loc[source["is_absorbed_partner"]].copy()
+    if audit.empty:
+        audit_df = pd.DataFrame(
+            columns=[
+                "source_location_id",
+                "partner_name",
+                "kfm_donor_id",
+                "segment_datetime",
+                "time_segment",
+                "orders_moved",
+                "action",
+            ]
+        )
+    else:
+        audit_df = audit[
+            [
+                "source_location_id",
+                "absorbed_partner_name",
+                "planning_location_id",
+                "segment_datetime",
+                "time_segment",
+                "prediction",
+            ]
+        ].rename(
+            columns={
+                "absorbed_partner_name": "partner_name",
+                "planning_location_id": "kfm_donor_id",
+                "prediction": "orders_moved",
+            }
+        )
+        audit_df["action"] = "group_before_slot_calculation"
+
+    segment_rank = {"low": 0, "medium": 1, "high": 2, "mega": 3}
+    source["_segment_rank"] = source["segment"].map(segment_rank).fillna(-1)
+    source["_donor_segment_rank"] = np.where(
+        source["source_location_id"] == source["planning_location_id"],
+        source["_segment_rank"],
+        -1,
+    )
+    source["_absorbed_orders"] = np.where(
+        source["is_absorbed_partner"],
+        source["prediction"].clip(lower=0),
+        0.0,
+    )
+    source["_absorbed_name"] = np.where(
+        source["is_absorbed_partner"],
+        source["absorbed_partner_name"],
+        "",
+    )
+
+    group_cols = ["planning_location_id", "segment_datetime", "time_segment"]
+    aggregation = {
+        "prediction": "sum",
+        "_segment_rank": "max",
+        "_donor_segment_rank": "max",
+        "_absorbed_orders": "sum",
+        "_absorbed_name": lambda values: ",".join(
+            dict.fromkeys(str(value) for value in values if str(value))
+        ),
+    }
+    if "orders_count" in source.columns:
+        aggregation["orders_count"] = lambda values: values.sum(min_count=1)
+
+    grouped = source.groupby(group_cols, as_index=False).agg(aggregation)
+    grouped = grouped.rename(
+        columns={
+            "planning_location_id": LOCATION_COLUMN,
+            "_absorbed_orders": "absorbed_partner_orders",
+            "_absorbed_name": "absorbed_partners",
+        }
+    )
+    rank_to_segment = {value: key for key, value in segment_rank.items()}
+    grouped["_resolved_segment_rank"] = np.where(
+        grouped["_donor_segment_rank"] >= 0,
+        grouped["_donor_segment_rank"],
+        grouped["_segment_rank"],
+    )
+    grouped["segment"] = grouped.pop("_resolved_segment_rank").map(rank_to_segment)
+    grouped = grouped.drop(columns=["_segment_rank", "_donor_segment_rank"])
+    grouped["segment_hours"] = grouped["time_segment"].map(segment_hours)
+    grouped["segment_end"] = grouped["segment_datetime"] + pd.to_timedelta(
+        grouped["segment_hours"],
+        unit="h",
+    )
+    configured_partner_names = {
+        planning_id: ",".join(
+            grouping.partner_name_by_id.get(member_id, member_id)
+            for member_id in members
+            if member_id != planning_id
+        )
+        for planning_id, members in grouping.planning_to_members.items()
+    }
+    grouped["absorbed_partners"] = grouped.apply(
+        lambda row: row["absorbed_partners"]
+        or configured_partner_names.get(str(row[LOCATION_COLUMN]), ""),
+        axis=1,
+    )
+    return grouped, audit_df
 
 
 def build_location_segment_map(pred_df):
@@ -853,11 +946,159 @@ def build_productivity_tables(order_counts, courier_equiv_df):
     return usable, segment_productivity, time_productivity, global_productivity
 
 
+def _weighted_duration_table(df, group_columns, percentile_column):
+    if df.empty:
+        return pd.DataFrame(
+            columns=group_columns
+            + ["duration_minutes", "duration_orders"]
+        )
+    rows = df.copy()
+    rows["_weighted_duration"] = (
+        rows[percentile_column] * rows["orders_count"]
+    )
+    result = (
+        rows.groupby(group_columns, as_index=False)
+        .agg(
+            weighted_duration=("_weighted_duration", "sum"),
+            duration_orders=("orders_count", "sum"),
+        )
+    )
+    result["duration_minutes"] = (
+        result.pop("weighted_duration")
+        / result["duration_orders"].replace(0, np.nan)
+    )
+    return result
+
+
+def build_cycle_time_tables(duration_df, percentile_column=CYCLE_TIME_PERCENTILE):
+    empty = pd.DataFrame()
+    if duration_df is None or duration_df.empty:
+        return empty, empty, empty, empty
+    required = {
+        "planning_location_id",
+        "segment",
+        "time_segment",
+        "vehicle_type",
+        "orders_count",
+        percentile_column,
+    }
+    missing = sorted(required - set(duration_df.columns))
+    if missing:
+        raise ValueError(f"Delivery duration report is missing columns: {missing}")
+
+    duration = duration_df.copy()
+    duration["planning_location_id"] = duration["planning_location_id"].map(
+        normalize_location_id
+    )
+    duration["orders_count"] = pd.to_numeric(
+        duration["orders_count"], errors="coerce"
+    ).fillna(0)
+    duration[percentile_column] = pd.to_numeric(
+        duration[percentile_column], errors="coerce"
+    )
+    duration = duration[
+        (duration["orders_count"] > 0)
+        & (duration[percentile_column] > 0)
+    ].copy()
+
+    location = _weighted_duration_table(
+        duration,
+        [
+            "planning_location_id",
+            "segment",
+            "time_segment",
+            "vehicle_type",
+        ],
+        percentile_column,
+    )
+    location = location[
+        location["duration_orders"] >= MIN_CYCLE_TIME_ORDERS
+    ].copy()
+    segment = _weighted_duration_table(
+        duration,
+        ["segment", "time_segment", "vehicle_type"],
+        percentile_column,
+    )
+    time_segment = _weighted_duration_table(
+        duration,
+        ["time_segment", "vehicle_type"],
+        percentile_column,
+    )
+    global_vehicle = _weighted_duration_table(
+        duration,
+        ["vehicle_type"],
+        percentile_column,
+    )
+    return location, segment, time_segment, global_vehicle
+
+
+def load_cycle_time_tables(path=DELIVERY_DURATION_PATH):
+    path = Path(path)
+    if not path.exists():
+        return (pd.DataFrame(),) * 4
+    return build_cycle_time_tables(pd.read_csv(path, dtype=str))
+
+
+def lookup_cycle_time(
+    row,
+    vehicle_type,
+    location_lookup,
+    segment_lookup,
+    time_lookup,
+    global_lookup,
+):
+    keys = [
+        (
+            location_lookup,
+            (
+                str(row[LOCATION_COLUMN]),
+                row["segment"],
+                row["time_segment"],
+                vehicle_type,
+            ),
+            "location_cycle_time",
+        ),
+        (
+            segment_lookup,
+            (row["segment"], row["time_segment"], vehicle_type),
+            "segment_cycle_time",
+        ),
+        (
+            time_lookup,
+            (row["time_segment"], vehicle_type),
+            "time_segment_cycle_time",
+        ),
+        (
+            global_lookup,
+            (vehicle_type,),
+            "global_cycle_time",
+        ),
+    ]
+    for lookup, key, source in keys:
+        if key in lookup:
+            duration_minutes, orders_count = lookup[key]
+            return float(duration_minutes), int(orders_count), source
+    return np.nan, 0, "missing_cycle_time"
+
+
 def make_lookup(df, key_cols, value_col):
     if df.empty:
         return {}
     return {
         tuple(row[col] for col in key_cols): float(row[value_col])
+        for _, row in df.iterrows()
+    }
+
+
+def make_duration_lookup(df, key_cols):
+    if df.empty:
+        return {}
+    return {
+        tuple(str(row[col]) if col == "planning_location_id" else row[col]
+              for col in key_cols): (
+            float(row["duration_minutes"]),
+            int(row["duration_orders"]),
+        )
         for _, row in df.iterrows()
     }
 
@@ -959,6 +1200,67 @@ def raw_slot_demand(predicted_orders, orders_per_slot):
     return float(predicted_orders / max(orders_per_slot, 1e-6))
 
 
+def cycle_time_slot_demand(predicted_orders, duration_minutes, window_hours):
+    if (
+        predicted_orders < MIN_PREDICTED_ORDERS_FOR_SLOT
+        or not np.isfinite(duration_minutes)
+        or duration_minutes <= 0
+        or window_hours <= 0
+    ):
+        return 0.0
+    cycle_minutes = duration_minutes * CYCLE_TIME_RETURN_MULTIPLIER
+    return float(predicted_orders * cycle_minutes / (60.0 * window_hours))
+
+
+def select_slot_demand(
+    auto_orders,
+    bike_orders,
+    slot_capacity,
+    cycle_minutes,
+    window_hours,
+):
+    order_by_vehicle = {AUTO: auto_orders, BIKE: bike_orders}
+    history_raw = {
+        vehicle_type: raw_slot_demand(
+            order_by_vehicle[vehicle_type],
+            slot_capacity[vehicle_type],
+        )
+        for vehicle_type in VEHICLE_TYPES
+    }
+    cycle_raw = {
+        vehicle_type: cycle_time_slot_demand(
+            order_by_vehicle[vehicle_type],
+            cycle_minutes.get(vehicle_type, np.nan),
+            window_hours,
+        )
+        for vehicle_type in VEHICLE_TYPES
+    }
+    selected_raw = {
+        vehicle_type: max(
+            history_raw[vehicle_type],
+            cycle_raw[vehicle_type],
+        )
+        for vehicle_type in VEHICLE_TYPES
+    }
+    if SLOT_ROUNDING_MODE == "combined":
+        auto_slots, bike_slots = allocate_slots_from_raw_demand(
+            selected_raw[AUTO],
+            selected_raw[BIKE],
+        )
+    else:
+        auto_slots = int(np.ceil(selected_raw[AUTO] * SAFETY_BUFFER))
+        bike_slots = int(np.ceil(selected_raw[BIKE] * SAFETY_BUFFER))
+    selected_source = {
+        vehicle_type: (
+            "cycle_time"
+            if cycle_raw[vehicle_type] > history_raw[vehicle_type]
+            else "history"
+        )
+        for vehicle_type in VEHICLE_TYPES
+    }
+    return history_raw, cycle_raw, selected_raw, selected_source, auto_slots, bike_slots
+
+
 def allocate_slots_from_raw_demand(raw_auto_slots, raw_bike_slots):
     total_raw_slots = raw_auto_slots + raw_bike_slots
     if total_raw_slots <= 0:
@@ -996,6 +1298,10 @@ def build_courier_forecast(
     group_to_members=None,
     location_overall_share_lookup=None,
     schedule_vehicle_share_lookup=None,
+    cycle_location=None,
+    cycle_segment=None,
+    cycle_time_segment=None,
+    cycle_global=None,
 ):
     location_share_lookup = make_lookup(
         location_share,
@@ -1021,6 +1327,29 @@ def build_courier_forecast(
         time_productivity,
         ["time_segment", "vehicle_type"],
         "orders_per_slot",
+    )
+    cycle_location_lookup = make_duration_lookup(
+        cycle_location if cycle_location is not None else pd.DataFrame(),
+        [
+            "planning_location_id",
+            "segment",
+            "time_segment",
+            "vehicle_type",
+        ],
+    )
+    cycle_segment_lookup = make_duration_lookup(
+        cycle_segment if cycle_segment is not None else pd.DataFrame(),
+        ["segment", "time_segment", "vehicle_type"],
+    )
+    cycle_time_lookup = make_duration_lookup(
+        cycle_time_segment
+        if cycle_time_segment is not None
+        else pd.DataFrame(),
+        ["time_segment", "vehicle_type"],
+    )
+    cycle_global_lookup = make_duration_lookup(
+        cycle_global if cycle_global is not None else pd.DataFrame(),
+        ["vehicle_type"],
     )
 
     rows = []
@@ -1056,6 +1385,9 @@ def build_courier_forecast(
 
         slot_capacity = {}
         slot_capacity_source = {}
+        duration_minutes = {}
+        duration_orders = {}
+        duration_source = {}
         for vehicle_type in VEHICLE_TYPES:
             capacity, source = lookup_productivity(
                 row,
@@ -1067,6 +1399,18 @@ def build_courier_forecast(
             )
             slot_capacity[vehicle_type] = capacity * SLOT_CAPACITY_MULTIPLIER
             slot_capacity_source[vehicle_type] = source
+            (
+                duration_minutes[vehicle_type],
+                duration_orders[vehicle_type],
+                duration_source[vehicle_type],
+            ) = lookup_cycle_time(
+                row,
+                vehicle_type,
+                cycle_location_lookup,
+                cycle_segment_lookup,
+                cycle_time_lookup,
+                cycle_global_lookup,
+            )
 
         prediction = max(float(row["prediction"]), 0.0)
         shares, auto_orders, bike_orders, auto_slots, bike_slots = (
@@ -1077,6 +1421,20 @@ def build_courier_forecast(
                 slot_capacity,
             )
         )
+        (
+            history_raw,
+            cycle_raw,
+            selected_raw,
+            selected_source,
+            auto_slots,
+            bike_slots,
+        ) = select_slot_demand(
+            auto_orders,
+            bike_orders,
+            slot_capacity,
+            duration_minutes,
+            segment_hours(row["time_segment"]),
+        )
 
         rows.append({
             LOCATION_COLUMN: row[LOCATION_COLUMN],
@@ -1085,6 +1443,10 @@ def build_courier_forecast(
             "time_segment": row["time_segment"],
             "orders_actual": row.get("orders_count", np.nan),
             "orders_prediction": prediction,
+            "absorbed_partner_orders": float(
+                row.get("absorbed_partner_orders", 0.0) or 0.0
+            ),
+            "absorbed_partners": str(row.get("absorbed_partners", "") or ""),
             "auto_order_prediction": auto_orders,
             "bike_order_prediction": bike_orders,
             "auto_order_share": shares[AUTO],
@@ -1093,6 +1455,20 @@ def build_courier_forecast(
             "bike_orders_per_slot": slot_capacity[BIKE],
             "auto_slot_capacity_source": slot_capacity_source[AUTO],
             "bike_slot_capacity_source": slot_capacity_source[BIKE],
+            "auto_history_raw_slots": history_raw[AUTO],
+            "bike_history_raw_slots": history_raw[BIKE],
+            "auto_cycle_time_raw_slots": cycle_raw[AUTO],
+            "bike_cycle_time_raw_slots": cycle_raw[BIKE],
+            "auto_selected_raw_slots": selected_raw[AUTO],
+            "bike_selected_raw_slots": selected_raw[BIKE],
+            "auto_slot_demand_source": selected_source[AUTO],
+            "bike_slot_demand_source": selected_source[BIKE],
+            "auto_delivery_percentile_minutes": duration_minutes[AUTO],
+            "bike_delivery_percentile_minutes": duration_minutes[BIKE],
+            "auto_delivery_duration_orders": duration_orders[AUTO],
+            "bike_delivery_duration_orders": duration_orders[BIKE],
+            "auto_delivery_duration_source": duration_source[AUTO],
+            "bike_delivery_duration_source": duration_source[BIKE],
             "auto_slots_needed": auto_slots,
             "bike_slots_needed": bike_slots,
             "total_slots_needed": auto_slots + bike_slots,
@@ -1141,6 +1517,11 @@ def build_summary(forecast_df, history_start, history_finish):
         {"metric": "safety_buffer", "value": SAFETY_BUFFER},
         {"metric": "slot_capacity_multiplier", "value": SLOT_CAPACITY_MULTIPLIER},
         {"metric": "slot_rounding_mode", "value": SLOT_ROUNDING_MODE},
+        {"metric": "cycle_time_percentile", "value": CYCLE_TIME_PERCENTILE},
+        {
+            "metric": "cycle_time_return_multiplier",
+            "value": CYCLE_TIME_RETURN_MULTIPLIER,
+        },
         {
             "metric": "default_auto_orders_per_slot_per_hour",
             "value": DEFAULT_AUTO_ORDERS_PER_SLOT_PER_HOUR,
@@ -1150,6 +1531,142 @@ def build_summary(forecast_df, history_start, history_finish):
             "value": DEFAULT_BIKE_ORDERS_PER_SLOT_PER_HOUR,
         },
     ]
+    return pd.DataFrame(rows)
+
+
+def build_cycle_time_impact_audit(forecast_df):
+    rows = []
+    for row in forecast_df.itertuples(index=False):
+        baseline_auto, baseline_bike = allocate_slots_from_raw_demand(
+            float(row.auto_history_raw_slots),
+            float(row.bike_history_raw_slots),
+        )
+        rows.append(
+            {
+                LOCATION_COLUMN: str(getattr(row, LOCATION_COLUMN)),
+                "segment_datetime": row.segment_datetime,
+                "segment": row.segment,
+                "time_segment": row.time_segment,
+                "baseline_auto_slots": baseline_auto,
+                "baseline_bike_slots": baseline_bike,
+                "baseline_total_slots": baseline_auto + baseline_bike,
+                "selected_auto_slots": int(row.auto_slots_needed),
+                "selected_bike_slots": int(row.bike_slots_needed),
+                "selected_total_slots": int(row.total_slots_needed),
+                "auto_slot_delta": int(row.auto_slots_needed) - baseline_auto,
+                "bike_slot_delta": int(row.bike_slots_needed) - baseline_bike,
+                "total_slot_delta": (
+                    int(row.total_slots_needed)
+                    - baseline_auto
+                    - baseline_bike
+                ),
+                "auto_cycle_time_won": (
+                    row.auto_slot_demand_source == "cycle_time"
+                ),
+                "bike_cycle_time_won": (
+                    row.bike_slot_demand_source == "cycle_time"
+                ),
+                "auto_delivery_duration_source": (
+                    row.auto_delivery_duration_source
+                ),
+                "bike_delivery_duration_source": (
+                    row.bike_delivery_duration_source
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def summarize_cycle_time_impact(audit_df):
+    if audit_df.empty:
+        return pd.DataFrame(columns=["metric", "value"])
+    return pd.DataFrame(
+        [
+            {"metric": "rows", "value": len(audit_df)},
+            {
+                "metric": "baseline_total_slots",
+                "value": int(audit_df["baseline_total_slots"].sum()),
+            },
+            {
+                "metric": "selected_total_slots",
+                "value": int(audit_df["selected_total_slots"].sum()),
+            },
+            {
+                "metric": "total_slot_delta",
+                "value": int(audit_df["total_slot_delta"].sum()),
+            },
+            {
+                "metric": "rows_with_slot_increase",
+                "value": int((audit_df["total_slot_delta"] > 0).sum()),
+            },
+            {
+                "metric": "auto_cycle_time_win_rate",
+                "value": float(audit_df["auto_cycle_time_won"].mean()),
+            },
+            {
+                "metric": "bike_cycle_time_win_rate",
+                "value": float(audit_df["bike_cycle_time_won"].mean()),
+            },
+            {
+                "metric": "auto_missing_duration_rate",
+                "value": float(
+                    (
+                        audit_df["auto_delivery_duration_source"]
+                        == "missing_cycle_time"
+                    ).mean()
+                ),
+            },
+            {
+                "metric": "bike_missing_duration_rate",
+                "value": float(
+                    (
+                        audit_df["bike_delivery_duration_source"]
+                        == "missing_cycle_time"
+                    ).mean()
+                ),
+            },
+        ]
+    )
+
+
+def build_capacity_model_backtest_comparison(backtest_df, impact_df):
+    key_columns = [
+        LOCATION_COLUMN,
+        "segment_datetime",
+        "segment",
+        "time_segment",
+    ]
+    actual_columns = key_columns + [
+        "actual_auto_slots",
+        "actual_bike_slots",
+        "actual_total_slots",
+    ]
+    comparison = impact_df.merge(
+        backtest_df[actual_columns],
+        on=key_columns,
+        how="left",
+    )
+    rows = []
+    for model in ["baseline", "selected"]:
+        row = {"model": model, "rows": len(comparison)}
+        for vehicle_type in ["auto", "bike", "total"]:
+            forecast = comparison[f"{model}_{vehicle_type}_slots"]
+            actual = comparison[f"actual_{vehicle_type}_slots"].fillna(0)
+            error = forecast - actual
+            actual_sum = actual.sum()
+            row[f"{vehicle_type}_slot_mae"] = float(error.abs().mean())
+            row[f"{vehicle_type}_under_sum"] = float(
+                (-error.clip(upper=0)).sum()
+            )
+            row[f"{vehicle_type}_over_sum"] = float(
+                error.clip(lower=0).sum()
+            )
+            row[f"{vehicle_type}_slot_wape"] = (
+                float(error.abs().sum() / actual_sum)
+                if actual_sum > 0
+                else np.nan
+            )
+        rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -1272,10 +1789,16 @@ def build_simple_slot_comparison(backtest_df):
 
 
 def main():
-    location_to_group = build_merged_location_groups()
+    partner_grouping = load_partner_grouping()
+    location_to_group = partner_grouping.location_to_planning
+    group_to_members = partner_grouping.planning_to_members
     pred_df = load_predictions(PREDICTIONS_PATH)
     if pred_df.empty:
         raise RuntimeError(f"No prediction rows found in {PREDICTIONS_PATH}")
+    pred_df, partner_order_audit_df = aggregate_predictions_to_planning_locations(
+        pred_df,
+        partner_grouping,
+    )
 
     location_segment_map = build_location_segment_map(pred_df)
     history_finish = pred_df["segment_datetime"].min()
@@ -1290,7 +1813,6 @@ def main():
 
     engine = build_engine()
     transport_by_location = load_location_transport(engine)
-    group_to_members = build_group_to_members(location_to_group)
     order_df = load_order_vehicle_history(engine, history_start_ms, history_finish_ms)
     order_df = prepare_order_history(order_df, location_to_group, location_segment_map)
     location_overall_share_lookup = build_location_overall_share_lookup(order_df)
@@ -1311,6 +1833,12 @@ def main():
         time_productivity,
         global_productivity,
     ) = build_productivity_tables(order_counts, courier_equiv)
+    (
+        cycle_location,
+        cycle_segment,
+        cycle_time_segment,
+        cycle_global,
+    ) = load_cycle_time_tables()
 
     forecast_df = build_courier_forecast(
         pred_df,
@@ -1325,6 +1853,10 @@ def main():
         group_to_members,
         location_overall_share_lookup,
         schedule_vehicle_share_lookup,
+        cycle_location,
+        cycle_segment,
+        cycle_time_segment,
+        cycle_global,
     )
     prediction_start = pred_df["segment_datetime"].min()
     prediction_finish = pred_df["segment_end"].max()
@@ -1354,10 +1886,28 @@ def main():
     )
     simple_slot_comparison_df = build_simple_slot_comparison(backtest_df)
     summary_df = build_summary(forecast_df, history_start, history_finish)
+    cycle_impact_df = build_cycle_time_impact_audit(forecast_df)
+    cycle_impact_summary_df = summarize_cycle_time_impact(cycle_impact_df)
+    capacity_model_comparison_df = build_capacity_model_backtest_comparison(
+        backtest_df,
+        cycle_impact_df,
+    )
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     forecast_df.to_csv(OUTPUT_DIR / "courier_forecast.csv", index=False)
     summary_df.to_csv(OUTPUT_DIR / "courier_forecast_summary.csv", index=False)
+    cycle_impact_df.to_csv(
+        OUTPUT_DIR / "cycle_time_impact_audit.csv",
+        index=False,
+    )
+    cycle_impact_summary_df.to_csv(
+        OUTPUT_DIR / "cycle_time_impact_summary.csv",
+        index=False,
+    )
+    capacity_model_comparison_df.to_csv(
+        OUTPUT_DIR / "capacity_model_backtest_comparison.csv",
+        index=False,
+    )
     location_share.to_csv(OUTPUT_DIR / "vehicle_share_by_location.csv", index=False)
     segment_share.to_csv(OUTPUT_DIR / "vehicle_share_by_segment.csv", index=False)
     location_productivity.to_csv(
@@ -1373,6 +1923,16 @@ def main():
         index=False,
     )
     courier_equiv.to_csv(OUTPUT_DIR / "courier_equivalent_capacity.csv", index=False)
+    for name, table in {
+        "location": cycle_location,
+        "segment": cycle_segment,
+        "time_segment": cycle_time_segment,
+        "global": cycle_global,
+    }.items():
+        table.to_csv(
+            OUTPUT_DIR / f"courier_cycle_time_capacity_{name}.csv",
+            index=False,
+        )
     history_segment_grid.to_csv(OUTPUT_DIR / "historical_segment_grid.csv", index=False)
     actual_slot_df.to_csv(OUTPUT_DIR / "actual_slots_by_window.csv", index=False)
     backtest_df.to_csv(OUTPUT_DIR / "courier_slot_backtest.csv", index=False)
@@ -1391,6 +1951,26 @@ def main():
     )
     slot_metrics_by_location_df.to_csv(
         OUTPUT_DIR / "courier_slot_metrics_by_location.csv",
+        index=False,
+    )
+    partner_order_audit_df.to_csv(
+        OUTPUT_DIR / "partner_grouping_order_audit.csv",
+        index=False,
+    )
+    build_grouping_config_audit(partner_grouping).to_csv(
+        OUTPUT_DIR / "partner_grouping_config_audit.csv",
+        index=False,
+    )
+    pd.DataFrame(
+        [
+            {
+                "planning_location_id": planning_id,
+                "member_location_ids": ",".join(members),
+            }
+            for planning_id, members in sorted(group_to_members.items())
+        ]
+    ).to_csv(
+        OUTPUT_DIR / "planning_location_groups.csv",
         index=False,
     )
 

@@ -1,0 +1,11 @@
+metric,value
+report_rows,1231
+report_locations,117
+report_orders,48030
+period_from,2026-07-25
+period_to,2026-08-24
+future_data_leakage,False
+forecast_hour_rows,25572
+missing_payment_rate_rows,0
+global_rate_fallback_rows,14512
+uniform_hourly_profile_rows,0

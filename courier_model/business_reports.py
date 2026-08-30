@@ -7,8 +7,28 @@ from sqlalchemy import text
 
 try:
     from . import main as cm
+    from .partner_grouping import (
+        PARTNER_DONOR_MAP_PATH,
+        build_grouping_config_audit,
+        load_partner_grouping,
+    )
+    from .orders_payment_report import (
+        aggregate_payment_rates,
+        build_payment_quality_audit,
+        load_orders_payment_report,
+    )
 except ImportError:
     import main as cm
+    from partner_grouping import (
+        PARTNER_DONOR_MAP_PATH,
+        build_grouping_config_audit,
+        load_partner_grouping,
+    )
+    from orders_payment_report import (
+        aggregate_payment_rates,
+        build_payment_quality_audit,
+        load_orders_payment_report,
+    )
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -25,11 +45,23 @@ BUSINESS_LAYER_ANCHOR_TO_OPEN = os.getenv("BUSINESS_LAYER_ANCHOR_TO_OPEN", "0") 
 BUSINESS_LAYER_USE_TEMPLATES = os.getenv("BUSINESS_LAYER_USE_TEMPLATES", "1") == "1"
 BUSINESS_LAYER_FILL_GAPS = os.getenv("BUSINESS_LAYER_FILL_GAPS", "0") == "1"
 MAX_SHIFT_HOURS = int(os.getenv("MAX_SHIFT_HOURS", "12"))
-PARTNER_DONOR_MAP_PATH = Path(
+PAYMENT_REPORT_PATH = Path(
     os.getenv(
-        "PARTNER_DONOR_MAP_PATH",
-        SCRIPT_DIR / "partner_donor_map.csv",
+        "ORDERS_PAYMENT_REPORT_PATH",
+        SCRIPT_DIR / "orders_payment_report.csv",
     )
+)
+DELIVERY_DURATION_HOURLY_PATH = Path(
+    os.getenv(
+        "DELIVERY_DURATION_HOURLY_PATH",
+        SCRIPT_DIR
+        / "res"
+        / "delivery_duration"
+        / "delivery_duration_by_planning_hour.csv",
+    )
+)
+MIN_SHIFT_RUB_PER_HOUR = float(
+    os.getenv("MIN_SHIFT_RUB_PER_HOUR", "0")
 )
 KFM_ORGANIZATION_IDS = {
     "5",
@@ -63,12 +95,30 @@ SHIFT_TEMPLATES = [
 
 def load_forecast(path):
     df = pd.read_csv(path)
+    df["location_id"] = df["location_id"].astype(str)
     df["segment_datetime"] = pd.to_datetime(
         df["segment_datetime"],
         errors="coerce",
     )
     df = df.dropna(subset=["segment_datetime"])
     return df
+
+
+def load_partner_grouping_order_audit(forecast_path):
+    audit_path = Path(forecast_path).parent / "partner_grouping_order_audit.csv"
+    if not audit_path.exists():
+        return pd.DataFrame(
+            columns=[
+                "source_location_id",
+                "partner_name",
+                "kfm_donor_id",
+                "segment_datetime",
+                "time_segment",
+                "orders_moved",
+                "action",
+            ]
+        )
+    return pd.read_csv(audit_path)
 
 
 def load_locations_metadata():
@@ -113,57 +163,28 @@ def build_location_name_map(forecast_df, locations_df):
     location_names = dict(
         zip(locations_df["location_id"], locations_df["location_name"])
     )
-    group_to_members = build_group_to_members()
-    result = {}
-    for location_id in forecast_df["location_id"].astype(str).unique():
-        if location_id.startswith("grp_"):
-            member_names = [
-                location_names.get(member_id, member_id)
-                for member_id in sorted(
-                    group_to_members.get(location_id, []),
-                    key=lambda value: int(value) if str(value).isdigit() else 0,
-                )
-            ]
-            result[location_id] = " + ".join(member_names) if member_names else location_id
-        else:
-            result[location_id] = location_names.get(location_id, location_id)
-    return result
+    return {
+        location_id: location_names.get(location_id, location_id)
+        for location_id in forecast_df["location_id"].astype(str).unique()
+    }
 
 
 def build_business_group_map(forecast_df, locations_df):
     organization_by_location = dict(
         zip(locations_df["location_id"], locations_df["organization_id"])
     )
-    group_to_members = build_group_to_members()
-
-    result = {}
-    for location_id in forecast_df["location_id"].astype(str).unique():
-        if location_id.startswith("grp_"):
-            member_ids = group_to_members.get(location_id, [])
-            member_is_kfm = [
-                organization_by_location.get(member_id) in KFM_ORGANIZATION_IDS
-                for member_id in member_ids
-            ]
-            if member_is_kfm and all(member_is_kfm):
-                result[location_id] = "kfm"
-            elif member_is_kfm and not any(member_is_kfm):
-                result[location_id] = "non_kfm"
-            else:
-                result[location_id] = "mixed"
-        else:
-            organization_id = organization_by_location.get(location_id)
-            result[location_id] = (
-                "kfm" if organization_id in KFM_ORGANIZATION_IDS else "non_kfm"
-            )
-    return result
+    return {
+        location_id: (
+            "kfm"
+            if organization_by_location.get(location_id) in KFM_ORGANIZATION_IDS
+            else "non_kfm"
+        )
+        for location_id in forecast_df["location_id"].astype(str).unique()
+    }
 
 
 def build_group_to_members():
-    location_to_group = cm.build_merged_location_groups()
-    group_to_members = {}
-    for member_id, group_id in location_to_group.items():
-        group_to_members.setdefault(group_id, []).append(str(member_id))
-    return group_to_members
+    return load_partner_grouping().planning_to_members
 
 
 def load_partner_donor_map(path=PARTNER_DONOR_MAP_PATH):
@@ -421,11 +442,16 @@ def build_partner_absorb_summary(audit_df, location_name_map):
                 "kfm_donor_name",
                 "partner_ids",
                 "partner_names",
-                "auto_slots_moved",
-                "bike_slots_moved",
-                "total_slots_moved",
+                "orders_moved",
             ]
         )
+    audit_df = audit_df.copy()
+    if "partner_ids" not in audit_df.columns:
+        audit_df["partner_ids"] = audit_df["source_location_id"].astype(str)
+    if "partner_names" not in audit_df.columns:
+        audit_df["partner_names"] = audit_df["partner_name"].astype(str)
+    if "orders_moved" not in audit_df.columns:
+        audit_df["orders_moved"] = 0.0
     summary = (
         audit_df.groupby(["kfm_donor_id"], as_index=False)
         .agg(
@@ -445,17 +471,13 @@ def build_partner_absorb_summary(audit_df, location_name_map):
                     )
                 ),
             ),
-            auto_slots_moved=("auto_slots_moved", "sum"),
-            bike_slots_moved=("bike_slots_moved", "sum"),
+            orders_moved=("orders_moved", "sum"),
         )
-    )
-    summary["total_slots_moved"] = (
-        summary["auto_slots_moved"] + summary["bike_slots_moved"]
     )
     summary["kfm_donor_name"] = summary["kfm_donor_id"].map(
         lambda x: location_name_map.get(str(x), str(x))
     )
-    return summary.sort_values("total_slots_moved", ascending=False)
+    return summary.sort_values("orders_moved", ascending=False)
 
 
 def _hour_value(hour, minutes):
@@ -617,7 +639,205 @@ def canonical_segment_start_hour(segment, time_segment, segment_datetime):
     return int(pd.Timestamp(segment_datetime).hour)
 
 
-def expand_to_hourly_demand(forecast_df):
+def build_payment_lookups(payment_rates):
+    if payment_rates is None or payment_rates.empty:
+        return {}, {}, (np.nan, 0.0)
+    rates = payment_rates.copy()
+    rates["planning_location_id"] = rates["planning_location_id"].astype(str)
+    direct = {
+        (row.planning_location_id, int(row.hour_from)): (
+            float(row.avg_c_rate_total_rub),
+            float(row.orders_count),
+        )
+        for row in rates.itertuples(index=False)
+        if pd.notna(row.avg_c_rate_total_rub)
+    }
+    hourly = (
+        rates.groupby("hour_from", as_index=False)
+        .agg(
+            orders_count=("orders_count", "sum"),
+            payment_sum=("sum_c_rate_total_rub", "sum"),
+        )
+    )
+    hourly["avg_rate"] = (
+        hourly["payment_sum"] / hourly["orders_count"].replace(0, np.nan)
+    )
+    hourly_lookup = {
+        int(row.hour_from): (float(row.avg_rate), float(row.orders_count))
+        for row in hourly.itertuples(index=False)
+        if pd.notna(row.avg_rate)
+    }
+    total_orders = float(rates["orders_count"].sum())
+    global_rate = (
+        float(rates["sum_c_rate_total_rub"].sum() / total_orders)
+        if total_orders > 0
+        else np.nan
+    )
+    return direct, hourly_lookup, (global_rate, total_orders)
+
+
+def load_delivery_p70_rates(path=DELIVERY_DURATION_HOURLY_PATH):
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame()
+    rates = pd.read_csv(path, dtype={"planning_location_id": str})
+    required = {
+        "planning_location_id",
+        "delivery_hour",
+        "vehicle_type",
+        "orders_count",
+        "p70_minutes",
+    }
+    missing = sorted(required - set(rates.columns))
+    if missing:
+        raise ValueError(f"Delivery duration report is missing columns: {missing}")
+    return rates
+
+
+def build_delivery_p70_lookups(rates):
+    if rates is None or rates.empty:
+        return {}, {}, {}
+    rows = rates.copy()
+    rows["planning_location_id"] = rows["planning_location_id"].astype(str)
+    rows["orders_count"] = pd.to_numeric(rows["orders_count"], errors="coerce")
+    rows["p70_minutes"] = pd.to_numeric(rows["p70_minutes"], errors="coerce")
+    rows = rows.dropna(subset=["orders_count", "p70_minutes"])
+    direct = {
+        (
+            row.planning_location_id,
+            int(row.delivery_hour),
+            row.vehicle_type,
+        ): float(row.p70_minutes)
+        for row in rows.itertuples(index=False)
+    }
+    rows["_weighted_p70"] = rows["p70_minutes"] * rows["orders_count"]
+    hourly = (
+        rows.groupby(["delivery_hour", "vehicle_type"], as_index=False)
+        .agg(
+            weighted_p70=("_weighted_p70", "sum"),
+            orders_count=("orders_count", "sum"),
+        )
+    )
+    hourly["p70_minutes"] = (
+        hourly["weighted_p70"] / hourly["orders_count"].replace(0, np.nan)
+    )
+    hourly_lookup = {
+        (int(row.delivery_hour), row.vehicle_type): float(row.p70_minutes)
+        for row in hourly.itertuples(index=False)
+    }
+    global_vehicle = (
+        rows.groupby("vehicle_type", as_index=False)
+        .agg(
+            weighted_p70=("_weighted_p70", "sum"),
+            orders_count=("orders_count", "sum"),
+        )
+    )
+    global_vehicle["p70_minutes"] = (
+        global_vehicle["weighted_p70"]
+        / global_vehicle["orders_count"].replace(0, np.nan)
+    )
+    global_lookup = {
+        row.vehicle_type: float(row.p70_minutes)
+        for row in global_vehicle.itertuples(index=False)
+    }
+    return direct, hourly_lookup, global_lookup
+
+
+def lookup_delivery_p70(location_id, hour, vehicle_type, lookups):
+    direct, hourly, global_vehicle = lookups
+    key = (str(location_id), int(hour), vehicle_type)
+    if key in direct:
+        return direct[key], "location_hour"
+    hour_key = (int(hour), vehicle_type)
+    if hour_key in hourly:
+        return hourly[hour_key], "global_hour"
+    if vehicle_type in global_vehicle:
+        return global_vehicle[vehicle_type], "global_vehicle"
+    return np.nan, "missing"
+
+
+def build_hourly_payment_quality(hourly_df):
+    if hourly_df.empty:
+        return pd.DataFrame(columns=["metric", "value"])
+    return pd.DataFrame(
+        [
+            {
+                "metric": "forecast_hour_rows",
+                "value": len(hourly_df),
+            },
+            {
+                "metric": "missing_payment_rate_rows",
+                "value": int(
+                    hourly_df["avg_payment_per_order_rub"].isna().sum()
+                ),
+            },
+            {
+                "metric": "global_rate_fallback_rows",
+                "value": int(
+                    hourly_df["payment_rate_source"]
+                    .astype(str)
+                    .str.contains("global")
+                    .sum()
+                ),
+            },
+            {
+                "metric": "uniform_hourly_profile_rows",
+                "value": int(
+                    hourly_df["hourly_profile_source"]
+                    .astype(str)
+                    .str.contains("uniform")
+                    .sum()
+                ),
+            },
+        ]
+    )
+
+
+def _hourly_payment_profile(location_id, hours, payment_lookups):
+    direct, hourly_lookup, global_value = payment_lookups
+    location_id = str(location_id)
+    direct_counts = np.array(
+        [direct.get((location_id, hour), (np.nan, 0.0))[1] for hour in hours],
+        dtype=float,
+    )
+    if direct_counts.sum() > 0:
+        weights = direct_counts / direct_counts.sum()
+        profile_source = "location_hour_orders"
+    else:
+        global_counts = np.array(
+            [hourly_lookup.get(hour, (np.nan, 0.0))[1] for hour in hours],
+            dtype=float,
+        )
+        if global_counts.sum() > 0:
+            weights = global_counts / global_counts.sum()
+            profile_source = "global_hour_orders"
+        else:
+            weights = np.full(len(hours), 1.0 / len(hours))
+            profile_source = "uniform"
+
+    rates = []
+    rate_sources = []
+    for hour in hours:
+        direct_value = direct.get((location_id, hour))
+        if direct_value is not None and np.isfinite(direct_value[0]):
+            rates.append(direct_value[0])
+            rate_sources.append("location_hour")
+        elif hour in hourly_lookup and np.isfinite(hourly_lookup[hour][0]):
+            rates.append(hourly_lookup[hour][0])
+            rate_sources.append("global_hour")
+        else:
+            rates.append(global_value[0])
+            rate_sources.append("global")
+    return weights, rates, rate_sources, profile_source
+
+
+def expand_to_hourly_demand(
+    forecast_df,
+    payment_rates=None,
+    delivery_p70_rates=None,
+):
+    payment_lookups = build_payment_lookups(payment_rates)
+    delivery_p70_lookups = build_delivery_p70_lookups(delivery_p70_rates)
     rows = []
     for row in forecast_df.itertuples(index=False):
         segment_start = pd.Timestamp(row.segment_datetime)
@@ -631,10 +851,38 @@ def expand_to_hourly_demand(forecast_df):
             segment_start,
         )
         business_date = segment_start.date().isoformat()
-        for hour_offset in range(hours):
-            hour = start_hour + hour_offset
-            if hour < 0 or hour >= 24:
-                continue
+        hour_values = [
+            start_hour + hour_offset
+            for hour_offset in range(hours)
+            if 0 <= start_hour + hour_offset < 24
+        ]
+        if not hour_values:
+            continue
+        weights, rates, rate_sources, profile_source = _hourly_payment_profile(
+            row.location_id,
+            hour_values,
+            payment_lookups,
+        )
+        for hour, weight, avg_rate, rate_source in zip(
+            hour_values,
+            weights,
+            rates,
+            rate_sources,
+        ):
+            auto_orders = float(row.auto_order_prediction) * float(weight)
+            bike_orders = float(row.bike_order_prediction) * float(weight)
+            auto_p70, auto_p70_source = lookup_delivery_p70(
+                row.location_id,
+                hour,
+                cm.AUTO,
+                delivery_p70_lookups,
+            )
+            bike_p70, bike_p70_source = lookup_delivery_p70(
+                row.location_id,
+                hour,
+                cm.BIKE,
+                delivery_p70_lookups,
+            )
             rows.append({
                 "location_id": str(row.location_id),
                 "date": business_date,
@@ -643,7 +891,43 @@ def expand_to_hourly_demand(forecast_df):
                 "time_segment": row.time_segment,
                 "vehicle_type": cm.AUTO,
                 "slots_needed": int(row.auto_slots_needed),
-                "predicted_orders": float(row.auto_order_prediction) / hours,
+                "predicted_orders": auto_orders,
+                "avg_payment_per_order_rub": avg_rate,
+                "predicted_earning_pool_rub": (
+                    auto_orders * avg_rate if np.isfinite(avg_rate) else np.nan
+                ),
+                "payment_rate_source": rate_source,
+                "hourly_profile_source": profile_source,
+                "p70_delivery_minutes": auto_p70,
+                "p70_delivery_source": auto_p70_source,
+                "segment_predicted_orders": float(row.auto_order_prediction),
+                "history_raw_slots": float(
+                    getattr(row, "auto_history_raw_slots", np.nan)
+                ),
+                "cycle_time_raw_slots": float(
+                    getattr(row, "auto_cycle_time_raw_slots", np.nan)
+                ),
+                "selected_raw_slots": float(
+                    getattr(row, "auto_selected_raw_slots", np.nan)
+                ),
+                "slot_demand_source": str(
+                    getattr(row, "auto_slot_demand_source", "")
+                ),
+                "orders_per_slot": float(
+                    getattr(row, "auto_orders_per_slot", np.nan)
+                ),
+                "slot_capacity_source": str(
+                    getattr(row, "auto_slot_capacity_source", "")
+                ),
+                "p80_delivery_minutes": float(
+                    getattr(row, "auto_delivery_percentile_minutes", np.nan)
+                ),
+                "delivery_duration_source": str(
+                    getattr(row, "auto_delivery_duration_source", "")
+                ),
+                "safety_buffer": float(
+                    getattr(row, "safety_buffer", cm.SAFETY_BUFFER)
+                ),
             })
             rows.append({
                 "location_id": str(row.location_id),
@@ -653,7 +937,43 @@ def expand_to_hourly_demand(forecast_df):
                 "time_segment": row.time_segment,
                 "vehicle_type": cm.BIKE,
                 "slots_needed": int(row.bike_slots_needed),
-                "predicted_orders": float(row.bike_order_prediction) / hours,
+                "predicted_orders": bike_orders,
+                "avg_payment_per_order_rub": avg_rate,
+                "predicted_earning_pool_rub": (
+                    bike_orders * avg_rate if np.isfinite(avg_rate) else np.nan
+                ),
+                "payment_rate_source": rate_source,
+                "hourly_profile_source": profile_source,
+                "p70_delivery_minutes": bike_p70,
+                "p70_delivery_source": bike_p70_source,
+                "segment_predicted_orders": float(row.bike_order_prediction),
+                "history_raw_slots": float(
+                    getattr(row, "bike_history_raw_slots", np.nan)
+                ),
+                "cycle_time_raw_slots": float(
+                    getattr(row, "bike_cycle_time_raw_slots", np.nan)
+                ),
+                "selected_raw_slots": float(
+                    getattr(row, "bike_selected_raw_slots", np.nan)
+                ),
+                "slot_demand_source": str(
+                    getattr(row, "bike_slot_demand_source", "")
+                ),
+                "orders_per_slot": float(
+                    getattr(row, "bike_orders_per_slot", np.nan)
+                ),
+                "slot_capacity_source": str(
+                    getattr(row, "bike_slot_capacity_source", "")
+                ),
+                "p80_delivery_minutes": float(
+                    getattr(row, "bike_delivery_percentile_minutes", np.nan)
+                ),
+                "delivery_duration_source": str(
+                    getattr(row, "bike_delivery_duration_source", "")
+                ),
+                "safety_buffer": float(
+                    getattr(row, "safety_buffer", cm.SAFETY_BUFFER)
+                ),
             })
 
     hourly = pd.DataFrame(rows)
@@ -668,6 +988,32 @@ def expand_to_hourly_demand(forecast_df):
         .agg(
             slots_needed=("slots_needed", "max"),
             predicted_orders=("predicted_orders", "sum"),
+            predicted_earning_pool_rub=("predicted_earning_pool_rub", "sum"),
+            avg_payment_per_order_rub=("avg_payment_per_order_rub", "mean"),
+            payment_rate_source=(
+                "payment_rate_source",
+                lambda values: ",".join(dict.fromkeys(values)),
+            ),
+            hourly_profile_source=(
+                "hourly_profile_source",
+                lambda values: ",".join(dict.fromkeys(values)),
+            ),
+            p70_delivery_minutes=("p70_delivery_minutes", "mean"),
+            p70_delivery_source=(
+                "p70_delivery_source",
+                lambda values: ",".join(dict.fromkeys(values)),
+            ),
+            time_segment=("time_segment", "first"),
+            segment_predicted_orders=("segment_predicted_orders", "sum"),
+            history_raw_slots=("history_raw_slots", "max"),
+            cycle_time_raw_slots=("cycle_time_raw_slots", "max"),
+            selected_raw_slots=("selected_raw_slots", "max"),
+            slot_demand_source=("slot_demand_source", "first"),
+            orders_per_slot=("orders_per_slot", "max"),
+            slot_capacity_source=("slot_capacity_source", "first"),
+            p80_delivery_minutes=("p80_delivery_minutes", "max"),
+            delivery_duration_source=("delivery_duration_source", "first"),
+            safety_buffer=("safety_buffer", "max"),
         )
     )
 
@@ -675,10 +1021,135 @@ def expand_to_hourly_demand(forecast_df):
 def build_hour_arrays(group):
     demand = np.zeros(24, dtype=int)
     orders = np.zeros(24, dtype=float)
+    earnings = np.zeros(24, dtype=float)
     for row in group.itertuples(index=False):
         demand[int(row.hour)] = max(demand[int(row.hour)], int(row.slots_needed))
         orders[int(row.hour)] += float(row.predicted_orders)
-    return demand, orders
+        value = getattr(row, "predicted_earning_pool_rub", 0.0)
+        earnings[int(row.hour)] += float(value) if pd.notna(value) else 0.0
+    return demand, orders, earnings
+
+
+def build_hourly_courier_need_explanation(
+    hourly_df,
+    location_name_map,
+    business_group_map,
+    work_interval_lookup,
+    group_to_members,
+):
+    if hourly_df.empty:
+        return pd.DataFrame()
+    report = hourly_df[
+        (hourly_df["slots_needed"] > 0)
+        | (hourly_df["predicted_orders"] > 0)
+    ].copy()
+    first_date = pd.to_datetime(report["date"]).min().date()
+    report = report[
+        pd.to_datetime(report["date"]).dt.date == first_date
+    ].copy()
+    interval_cache = {}
+    for location_id, date in report[["location_id", "date"]].drop_duplicates().itertuples(
+        index=False
+    ):
+        interval_cache[(str(location_id), str(date))] = get_open_intervals(
+            location_id,
+            pd.Timestamp(date).dayofweek,
+            work_interval_lookup,
+            group_to_members,
+        )
+    inside_work_hours = [
+        hour_is_inside_open_intervals(
+            int(row.hour),
+            interval_cache.get((str(row.location_id), str(row.date)), []),
+        )
+        for row in report.itertuples(index=False)
+    ]
+    report = report.loc[inside_work_hours].copy()
+    report["location_name"] = (
+        report["location_id"].astype(str).map(location_name_map)
+    )
+    report["business_group"] = (
+        report["location_id"].astype(str).map(business_group_map)
+    )
+    report["hour_window"] = report["hour"].map(
+        lambda hour: f"{int(hour):02d}:00-{int(hour) + 1:02d}:00"
+    )
+    report["calculation_window_hours"] = report["time_segment"].map(
+        cm.segment_hours
+    )
+    report["historical_capacity_orders_per_hour"] = (
+        report["orders_per_slot"]
+        / report["calculation_window_hours"].replace(0, np.nan)
+    )
+    report["p80_round_trip_minutes"] = (
+        report["p80_delivery_minutes"] * cm.CYCLE_TIME_RETURN_MULTIPLIER
+    )
+
+    source_labels = {
+        "history": "историческая производительность",
+        "cycle_time": "время полного цикла доставки",
+    }
+
+    def explain(row):
+        source = source_labels.get(
+            str(row.slot_demand_source),
+            str(row.slot_demand_source) or "fallback",
+        )
+        return (
+            f"Нужно {int(row.slots_needed)} кур.; "
+            f"прогноз {row.predicted_orders:.1f} заказа/ч; "
+            f"окно {row.time_segment}: "
+            f"история {row.history_raw_slots:.2f}, "
+            f"цикл {row.cycle_time_raw_slots:.2f}; "
+            f"выбрано: {source}; "
+            f"страховой запас {max(row.safety_buffer - 1, 0):.0%}"
+        )
+
+    report["courier_need_reason"] = report.apply(explain, axis=1)
+    columns = [
+        "location_id",
+        "location_name",
+        "business_group",
+        "date",
+        "hour",
+        "hour_window",
+        "segment",
+        "time_segment",
+        "vehicle_type",
+        "predicted_orders",
+        "segment_predicted_orders",
+        "p70_delivery_minutes",
+        "p80_delivery_minutes",
+        "p80_round_trip_minutes",
+        "historical_capacity_orders_per_hour",
+        "history_raw_slots",
+        "cycle_time_raw_slots",
+        "selected_raw_slots",
+        "safety_buffer",
+        "slots_needed",
+        "slot_demand_source",
+        "slot_capacity_source",
+        "delivery_duration_source",
+        "payment_rate_source",
+        "p70_delivery_source",
+        "courier_need_reason",
+    ]
+    numeric_columns = [
+        "predicted_orders",
+        "segment_predicted_orders",
+        "p70_delivery_minutes",
+        "p80_delivery_minutes",
+        "p80_round_trip_minutes",
+        "historical_capacity_orders_per_hour",
+        "history_raw_slots",
+        "cycle_time_raw_slots",
+        "selected_raw_slots",
+        "safety_buffer",
+    ]
+    report[numeric_columns] = report[numeric_columns].round(2)
+    return report[columns].sort_values(
+        ["date", "location_id", "vehicle_type", "hour"]
+    )
 
 
 def build_single_courier_open_shifts(
@@ -688,6 +1159,7 @@ def build_single_courier_open_shifts(
     vehicle_type,
     demand,
     hourly_orders,
+    hourly_earnings,
     open_intervals,
 ):
     rows = []
@@ -698,31 +1170,57 @@ def build_single_courier_open_shifts(
         if finish_bound <= start_bound:
             continue
 
-        active_hours = int((demand[start_bound:finish_bound] > 0).sum())
-        duration_hours = finish_bound - start_bound
-        rows.append({
-            "location_id": location_id,
-            "date": date,
-            "segment": segment,
-            "vehicle_type": vehicle_type,
-            "shift_template": "full_open_window",
-            "shift_start": f"{start_bound:02d}:00",
-            "shift_finish": f"{finish_bound:02d}:00",
-            "shift_hours": duration_hours,
-            "open_intervals": format_intervals(candidate_intervals),
-            "slots_to_create": 1,
-            "covered_need_hours": active_hours,
-            "template_hours": duration_hours,
-            "overcoverage_hours": duration_hours - active_hours,
-            "covered_predicted_orders": float(
-                hourly_orders[start_bound:finish_bound].sum()
-            ),
-        })
+        hourly_income = np.zeros(24, dtype=float)
+        active = demand > 0
+        hourly_income[active] = (
+            hourly_earnings[active] / np.maximum(demand[active], 1)
+        )
+        chunks = split_shift_into_max_hours(
+            start_bound,
+            finish_bound,
+            MAX_SHIFT_HOURS,
+            hourly_income,
+        )
+        for chunk_start, chunk_finish in chunks:
+            active_hours = int(
+                (demand[chunk_start:chunk_finish] > 0).sum()
+            )
+            duration_hours = chunk_finish - chunk_start
+            rows.append({
+                "location_id": location_id,
+                "date": date,
+                "segment": segment,
+                "vehicle_type": vehicle_type,
+                "shift_template": (
+                    "full_open_window"
+                    if len(chunks) == 1
+                    else "full_open_window_earnings_split"
+                ),
+                "shift_start": f"{chunk_start:02d}:00",
+                "shift_finish": f"{chunk_finish:02d}:00",
+                "shift_hours": duration_hours,
+                "open_intervals": format_intervals(candidate_intervals),
+                "slots_to_create": 1,
+                "covered_need_hours": active_hours,
+                "template_hours": duration_hours,
+                "overcoverage_hours": duration_hours - active_hours,
+                "covered_predicted_orders": float(
+                    hourly_orders[chunk_start:chunk_finish].sum()
+                ),
+                **_shift_income_metrics(
+                    demand,
+                    hourly_earnings,
+                    hourly_orders,
+                    chunk_start,
+                    chunk_finish,
+                    1,
+                ),
+            })
     return rows
 
 
-def choose_shift_template(residual, open_intervals):
-    best = None
+def choose_shift_template(residual, open_intervals, hourly_income=None):
+    candidates = []
     for template_name, start_hour, duration_hours in SHIFT_TEMPLATES:
         if duration_hours > MAX_SHIFT_HOURS:
             continue
@@ -733,17 +1231,39 @@ def choose_shift_template(residual, open_intervals):
         if covered <= 0:
             continue
         over_hours = duration_hours - int((residual[start_hour:end_hour] > 0).sum())
-        score = (covered / duration_hours, covered, -over_hours, duration_hours)
-        candidate = (score, template_name, start_hour, end_hour, duration_hours)
-        if best is None or candidate[0] > best[0]:
-            best = candidate
-    if best is None:
+        earnings = (
+            float(np.asarray(hourly_income)[start_hour:end_hour].sum())
+            if hourly_income is not None
+            else 0.0
+        )
+        candidates.append(
+            (
+                covered,
+                over_hours,
+                earnings,
+                template_name,
+                start_hour,
+                end_hour,
+                duration_hours,
+            )
+        )
+    if not candidates:
         return None
-    _, template_name, start_hour, end_hour, duration_hours = best
+    target_earnings = float(np.median([candidate[2] for candidate in candidates]))
+    best = max(
+        candidates,
+        key=lambda candidate: (
+            candidate[0],
+            -abs(candidate[2] - target_earnings),
+            -candidate[1],
+            -candidate[6],
+        ),
+    )
+    _, _, _, template_name, start_hour, end_hour, duration_hours = best
     return template_name, start_hour, end_hour, duration_hours
 
 
-def choose_fallback_shift(residual, open_intervals):
+def choose_fallback_shift(residual, open_intervals, hourly_income=None):
     active_hours = np.where(residual > 0)[0]
     if len(active_hours) == 0:
         return None
@@ -771,7 +1291,12 @@ def choose_fallback_shift(residual, open_intervals):
     return template_name, start_hour, end_hour, duration_hours
 
 
-def split_shift_into_max_hours(shift_start, shift_finish, max_hours=MAX_SHIFT_HOURS):
+def split_shift_into_max_hours(
+    shift_start,
+    shift_finish,
+    max_hours=MAX_SHIFT_HOURS,
+    hour_values=None,
+):
     """
     Split [shift_start, shift_finish) into chunks of length <= max_hours,
     preferring near-equal lengths instead of max-fill leftovers.
@@ -787,6 +1312,20 @@ def split_shift_into_max_hours(shift_start, shift_finish, max_hours=MAX_SHIFT_HO
         return [(start, finish)]
 
     chunk_count = int(np.ceil(total_hours / max_hours))
+    if chunk_count == 2 and hour_values is not None:
+        values = np.asarray(hour_values, dtype=float)
+        candidates = []
+        min_boundary = max(start + 1, finish - max_hours)
+        max_boundary = min(finish - 1, start + max_hours)
+        for boundary in range(min_boundary, max_boundary + 1):
+            left = float(values[start:boundary].sum())
+            right = float(values[boundary:finish].sum())
+            earning_gap = abs(left - right)
+            duration_gap = abs((boundary - start) - (finish - boundary))
+            candidates.append((earning_gap, duration_gap, boundary))
+        if candidates:
+            boundary = min(candidates)[2]
+            return [(start, boundary), (boundary, finish)]
     base = total_hours // chunk_count
     remainder = total_hours % chunk_count
 
@@ -801,6 +1340,35 @@ def split_shift_into_max_hours(shift_start, shift_finish, max_hours=MAX_SHIFT_HO
     return chunks
 
 
+def _shift_income_metrics(
+    demand,
+    hourly_earnings,
+    hourly_orders,
+    shift_start,
+    shift_finish,
+    layer,
+):
+    duration_hours = max(int(shift_finish) - int(shift_start), 0)
+    expected_earnings = 0.0
+    expected_orders = 0.0
+    for hour in range(int(shift_start), int(shift_finish)):
+        if demand[hour] >= layer and demand[hour] > 0:
+            expected_earnings += float(hourly_earnings[hour]) / float(demand[hour])
+            expected_orders += float(hourly_orders[hour]) / float(demand[hour])
+    rub_per_hour = (
+        expected_earnings / duration_hours if duration_hours > 0 else 0.0
+    )
+    return {
+        "predicted_shift_earnings_rub": expected_earnings,
+        "assigned_predicted_orders": expected_orders,
+        "predicted_rub_per_hour": rub_per_hour,
+        "low_expected_income": bool(
+            MIN_SHIFT_RUB_PER_HOUR > 0
+            and rub_per_hour < MIN_SHIFT_RUB_PER_HOUR
+        ),
+    }
+
+
 def build_shift_plan_for_group(
     location_id,
     date,
@@ -809,11 +1377,12 @@ def build_shift_plan_for_group(
     group,
     open_intervals,
 ):
-    residual, hourly_orders = build_hour_arrays(group)
+    residual, hourly_orders, hourly_earnings = build_hour_arrays(group)
     for hour in range(24):
         if not hour_is_inside_open_intervals(hour, open_intervals):
             residual[hour] = 0
             hourly_orders[hour] = 0
+            hourly_earnings[hour] = 0
 
     if int(residual.max()) == 1:
         return build_single_courier_open_shifts(
@@ -823,6 +1392,7 @@ def build_shift_plan_for_group(
             vehicle_type,
             residual,
             hourly_orders,
+            hourly_earnings,
             open_intervals,
         )
 
@@ -834,15 +1404,25 @@ def build_shift_plan_for_group(
             vehicle_type,
             residual,
             hourly_orders,
+            hourly_earnings,
             open_intervals,
         )
 
     rows = []
 
     while residual.max() > 0:
-        chosen = choose_shift_template(residual, open_intervals)
+        hourly_income = hourly_earnings / np.maximum(residual, 1)
+        chosen = choose_shift_template(
+            residual,
+            open_intervals,
+            hourly_income,
+        )
         if chosen is None:
-            chosen = choose_fallback_shift(residual, open_intervals)
+            chosen = choose_fallback_shift(
+                residual,
+                open_intervals,
+                hourly_income,
+            )
         if chosen is None:
             break
         template_name, start_hour, end_hour, duration_hours = chosen
@@ -869,6 +1449,14 @@ def build_shift_plan_for_group(
             "template_hours": duration_hours,
             "overcoverage_hours": duration_hours - covered_need_hours,
             "covered_predicted_orders": covered_order_sum,
+            **_shift_income_metrics(
+                residual + (active_hours.astype(int)),
+                hourly_earnings,
+                hourly_orders,
+                start_hour,
+                end_hour,
+                1,
+            ),
         })
 
     return rows
@@ -889,6 +1477,7 @@ def _append_shift_row(
     vehicle_type,
     demand,
     hourly_orders,
+    hourly_earnings,
     open_intervals_display,
     shift_start,
     shift_finish,
@@ -899,10 +1488,16 @@ def _append_shift_row(
     if shift_finish <= shift_start:
         return
     if enforce_max_shift_hours:
+        layer_income = np.zeros(24, dtype=float)
+        active = demand >= layer
+        layer_income[active] = (
+            hourly_earnings[active] / np.maximum(demand[active], 1)
+        )
         chunks = split_shift_into_max_hours(
             shift_start,
             shift_finish,
             MAX_SHIFT_HOURS,
+            layer_income,
         )
     else:
         chunks = [(int(shift_start), int(shift_finish))]
@@ -928,6 +1523,14 @@ def _append_shift_row(
             "covered_predicted_orders": float(
                 hourly_orders[chunk_start:chunk_finish].sum()
             ),
+            **_shift_income_metrics(
+                demand,
+                hourly_earnings,
+                hourly_orders,
+                chunk_start,
+                chunk_finish,
+                layer,
+            ),
         })
 
 
@@ -950,6 +1553,7 @@ def _build_layer_rows_for_interval(
     vehicle_type,
     demand,
     hourly_orders,
+    hourly_earnings,
     open_interval,
     open_intervals_display,
 ):
@@ -981,9 +1585,22 @@ def _build_layer_rows_for_interval(
             else:
                 residual = np.zeros(24, dtype=int)
                 residual[start_bound:finish_bound] = layer_mask.astype(int)
-                chosen = choose_shift_template(residual, [open_interval])
+                layer_income = np.zeros(24, dtype=float)
+                active = demand >= layer
+                layer_income[active] = (
+                    hourly_earnings[active] / np.maximum(demand[active], 1)
+                )
+                chosen = choose_shift_template(
+                    residual,
+                    [open_interval],
+                    layer_income,
+                )
                 if chosen is None:
-                    chosen = choose_fallback_shift(residual, [open_interval])
+                    chosen = choose_fallback_shift(
+                        residual,
+                        [open_interval],
+                        layer_income,
+                    )
                 if chosen is None:
                     continue
                 template_name, shift_start, shift_finish, _ = chosen
@@ -998,6 +1615,7 @@ def _build_layer_rows_for_interval(
                 vehicle_type,
                 demand,
                 hourly_orders,
+                hourly_earnings,
                 open_intervals_display,
                 shift_start,
                 shift_finish,
@@ -1005,6 +1623,30 @@ def _build_layer_rows_for_interval(
                 template_name,
                 enforce_max_shift_hours=enforce_max_shift_hours,
             )
+            covered_mask = np.zeros_like(layer_mask, dtype=bool)
+            covered_start = max(int(shift_start), start_bound) - start_bound
+            covered_finish = min(int(shift_finish), finish_bound) - start_bound
+            if covered_finish > covered_start:
+                covered_mask[covered_start:covered_finish] = True
+            uncovered_mask = layer_mask & ~covered_mask
+            for run_start, run_finish in _iter_contiguous_true_runs(
+                uncovered_mask
+            ):
+                _append_shift_row(
+                    rows,
+                    location_id,
+                    date,
+                    segment,
+                    vehicle_type,
+                    demand,
+                    hourly_orders,
+                    hourly_earnings,
+                    open_intervals_display,
+                    start_bound + int(run_start),
+                    start_bound + int(run_finish),
+                    layer,
+                    "demand_layer_gap",
+                )
             continue
 
         for run_start, run_finish in _iter_contiguous_true_runs(layer_mask):
@@ -1024,6 +1666,7 @@ def _build_layer_rows_for_interval(
                 vehicle_type,
                 demand,
                 hourly_orders,
+                hourly_earnings,
                 open_intervals_display,
                 shift_start,
                 shift_finish,
@@ -1042,6 +1685,7 @@ def _fill_shift_coverage_gaps(
     vehicle_type,
     demand,
     hourly_orders,
+    hourly_earnings,
     open_intervals,
 ):
     if not rows:
@@ -1082,6 +1726,7 @@ def _fill_shift_coverage_gaps(
                 vehicle_type,
                 demand,
                 hourly_orders,
+                hourly_earnings,
                 open_intervals,
                 shift_start,
                 shift_finish,
@@ -1106,6 +1751,7 @@ def build_layered_shift_plan_for_group(
     vehicle_type,
     demand,
     hourly_orders,
+    hourly_earnings,
     open_intervals,
 ):
     rows = []
@@ -1119,6 +1765,7 @@ def build_layered_shift_plan_for_group(
                 vehicle_type,
                 demand,
                 hourly_orders,
+                hourly_earnings,
                 open_interval,
                 candidate_intervals,
             )
@@ -1132,6 +1779,7 @@ def build_layered_shift_plan_for_group(
             vehicle_type,
             demand,
             hourly_orders,
+            hourly_earnings,
             candidate_intervals,
         )
     return rows
@@ -1165,7 +1813,7 @@ def build_business_shift_plan(hourly_df, work_interval_lookup, group_to_members)
         return pd.DataFrame()
 
     shift_plan = pd.DataFrame(rows)
-    return (
+    grouped = (
         shift_plan.groupby(
             [
                 "location_id",
@@ -1186,10 +1834,296 @@ def build_business_shift_plan(hourly_df, work_interval_lookup, group_to_members)
             template_hours=("template_hours", "sum"),
             overcoverage_hours=("overcoverage_hours", "sum"),
             shift_window_predicted_orders=("covered_predicted_orders", "max"),
+            predicted_total_earnings_rub=(
+                "predicted_shift_earnings_rub",
+                "sum",
+            ),
+            assigned_predicted_orders_total=(
+                "assigned_predicted_orders",
+                "sum",
+            ),
+            low_expected_income=("low_expected_income", "any"),
         )
         .sort_values(
             ["date", "location_id", "vehicle_type", "shift_start", "shift_finish"]
         )
+    )
+    grouped["predicted_shift_earnings_rub"] = (
+        grouped["predicted_total_earnings_rub"]
+        / grouped["slots_to_create"].clip(lower=1)
+    )
+    grouped["predicted_rub_per_hour"] = (
+        grouped["predicted_shift_earnings_rub"]
+        / grouped["shift_hours"].replace(0, np.nan)
+    )
+    grouped["predicted_orders_per_shift"] = (
+        grouped["assigned_predicted_orders_total"]
+        / grouped["slots_to_create"].clip(lower=1)
+    )
+    grouped["avg_payment_per_order_rub"] = (
+        grouped["predicted_total_earnings_rub"]
+        / grouped["assigned_predicted_orders_total"].replace(0, np.nan)
+    )
+    grouped["low_expected_income"] = (
+        grouped["low_expected_income"]
+        | (
+            (MIN_SHIFT_RUB_PER_HOUR > 0)
+            & (grouped["predicted_rub_per_hour"] < MIN_SHIFT_RUB_PER_HOUR)
+        )
+    )
+    return grouped
+
+
+def attach_shift_delivery_p70(shift_plan, hourly_df):
+    if shift_plan.empty:
+        return shift_plan
+    group_columns = ["location_id", "date", "segment", "vehicle_type"]
+    hourly_groups = {
+        key: group.set_index("hour")
+        for key, group in hourly_df.groupby(group_columns)
+    }
+    p70_values = []
+    p70_sources = []
+    peak_orders_values = []
+    peak_hours = []
+    max_couriers_values = []
+    need_sources = []
+    for row in shift_plan.itertuples(index=False):
+        key = tuple(getattr(row, column) for column in group_columns)
+        hourly = hourly_groups.get(key)
+        start = int(str(row.shift_start).split(":")[0])
+        finish = int(str(row.shift_finish).split(":")[0])
+        weighted_minutes = 0.0
+        order_weight = 0.0
+        sources = []
+        if hourly is not None:
+            for hour in range(start, finish):
+                if hour not in hourly.index:
+                    continue
+                hour_row = hourly.loc[hour]
+                p70 = float(hour_row["p70_delivery_minutes"])
+                if not np.isfinite(p70):
+                    continue
+                slots = max(float(hour_row["slots_needed"]), 1.0)
+                orders_per_courier = float(hour_row["predicted_orders"]) / slots
+                weighted_minutes += p70 * orders_per_courier
+                order_weight += orders_per_courier
+                sources.extend(
+                    str(hour_row["p70_delivery_source"]).split(",")
+                )
+            shift_hours = hourly.loc[
+                hourly.index.intersection(range(start, finish))
+            ]
+            if not shift_hours.empty:
+                peak_index = shift_hours["predicted_orders"].idxmax()
+                peak_orders_values.append(
+                    float(shift_hours.loc[peak_index, "predicted_orders"])
+                )
+                peak_hours.append(f"{int(peak_index):02d}:00")
+                max_couriers_values.append(
+                    int(shift_hours["slots_needed"].max())
+                )
+                need_sources.append(
+                    str(shift_hours.loc[peak_index, "slot_demand_source"])
+                )
+            else:
+                peak_orders_values.append(np.nan)
+                peak_hours.append("")
+                max_couriers_values.append(0)
+                need_sources.append("")
+        else:
+            peak_orders_values.append(np.nan)
+            peak_hours.append("")
+            max_couriers_values.append(0)
+            need_sources.append("")
+        p70_values.append(
+            weighted_minutes / order_weight if order_weight > 0 else np.nan
+        )
+        p70_sources.append(",".join(dict.fromkeys(source for source in sources if source)))
+    result = shift_plan.copy()
+    result["p70_delivery_minutes_per_order"] = p70_values
+    result["p70_delivery_source"] = p70_sources
+    result["peak_orders_per_hour"] = peak_orders_values
+    result["peak_hour"] = peak_hours
+    result["max_couriers_needed_in_shift"] = max_couriers_values
+    result["courier_need_source"] = need_sources
+    return result
+
+
+def build_shift_earnings_audit(shift_plan):
+    if shift_plan.empty:
+        return pd.DataFrame()
+    group_columns = ["location_id", "date", "segment", "vehicle_type"]
+    rows = []
+    for key, group in shift_plan.groupby(group_columns):
+        per_slot_earnings = np.repeat(
+            group["predicted_shift_earnings_rub"].to_numpy(),
+            group["slots_to_create"].astype(int).to_numpy(),
+        )
+        mean_earnings = (
+            float(per_slot_earnings.mean()) if len(per_slot_earnings) else 0.0
+        )
+        rows.append(
+            {
+                **dict(zip(group_columns, key)),
+                "shifts_count": int(group["slots_to_create"].sum()),
+                "expected_earnings_mean_rub": mean_earnings,
+                "expected_earnings_min_rub": (
+                    float(per_slot_earnings.min())
+                    if len(per_slot_earnings)
+                    else 0.0
+                ),
+                "expected_earnings_max_rub": (
+                    float(per_slot_earnings.max())
+                    if len(per_slot_earnings)
+                    else 0.0
+                ),
+                "earnings_coefficient_of_variation": (
+                    float(per_slot_earnings.std() / mean_earnings)
+                    if mean_earnings > 0
+                    else np.nan
+                ),
+                "rub_per_hour_p10": float(
+                    group["predicted_rub_per_hour"].quantile(0.10)
+                ),
+                "rub_per_hour_median": float(
+                    group["predicted_rub_per_hour"].median()
+                ),
+                "low_expected_income_shifts": int(
+                    group.loc[group["low_expected_income"], "slots_to_create"].sum()
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def build_control_week_validation(
+    hourly_df,
+    shift_plan,
+    work_interval_lookup=None,
+    group_to_members=None,
+):
+    if hourly_df.empty or shift_plan.empty:
+        return pd.DataFrame(columns=["metric", "value"])
+    start_date = pd.to_datetime(hourly_df["date"]).min()
+    finish_date = start_date + pd.Timedelta(days=7)
+    hourly = hourly_df[
+        pd.to_datetime(hourly_df["date"]).between(
+            start_date,
+            finish_date,
+            inclusive="left",
+        )
+    ].copy()
+    shifts = shift_plan[
+        pd.to_datetime(shift_plan["date"]).between(
+            start_date,
+            finish_date,
+            inclusive="left",
+        )
+    ].copy()
+
+    group_columns = ["location_id", "date", "segment", "vehicle_type"]
+    coverage_shortfall = 0
+    required_courier_hours = 0
+    planned_courier_hours = 0
+    max_demand = (
+        hourly.groupby(group_columns)["slots_needed"].max().to_dict()
+    )
+    shifts_by_group = {
+        key: group
+        for key, group in shifts.groupby(group_columns)
+    }
+    for key, group in hourly.groupby(group_columns):
+        location_id, date, _, _ = key
+        open_intervals = get_open_intervals(
+            location_id,
+            pd.Timestamp(date).dayofweek,
+            work_interval_lookup or {},
+            group_to_members or {},
+        )
+        coverage = np.zeros(24, dtype=int)
+        for row in shifts_by_group.get(key, pd.DataFrame()).itertuples(index=False):
+            start = int(str(row.shift_start).split(":")[0])
+            finish = int(str(row.shift_finish).split(":")[0])
+            coverage[start:finish] += int(row.slots_to_create)
+            planned_courier_hours += (
+                finish - start
+            ) * int(row.slots_to_create)
+        for row in group.itertuples(index=False):
+            required = (
+                int(row.slots_needed)
+                if hour_is_inside_open_intervals(
+                    int(row.hour),
+                    open_intervals,
+                )
+                else 0
+            )
+            required_courier_hours += required
+            coverage_shortfall += max(required - coverage[int(row.hour)], 0)
+
+    invalid_long_shifts = 0
+    all_long_shifts = 0
+    for row in shifts.itertuples(index=False):
+        key = tuple(getattr(row, column) for column in group_columns)
+        if row.shift_hours > MAX_SHIFT_HOURS:
+            all_long_shifts += int(row.slots_to_create)
+        if row.shift_hours > MAX_SHIFT_HOURS and max_demand.get(key, 0) > 1:
+            invalid_long_shifts += int(row.slots_to_create)
+
+    earnings = shifts["predicted_rub_per_hour"].replace([np.inf, -np.inf], np.nan)
+    return pd.DataFrame(
+        [
+            {"metric": "control_week_start", "value": start_date.date()},
+            {
+                "metric": "control_week_finish",
+                "value": finish_date.date(),
+            },
+            {
+                "metric": "required_courier_hours",
+                "value": required_courier_hours,
+            },
+            {
+                "metric": "planned_courier_hours",
+                "value": planned_courier_hours,
+            },
+            {
+                "metric": "coverage_shortfall_courier_hours",
+                "value": coverage_shortfall,
+            },
+            {
+                "metric": "multi_courier_shifts_over_12h",
+                "value": invalid_long_shifts,
+            },
+            {
+                "metric": "all_shifts_over_12h",
+                "value": all_long_shifts,
+            },
+            {
+                "metric": "shift_earnings_p10_rub",
+                "value": shifts["predicted_shift_earnings_rub"].quantile(0.10),
+            },
+            {
+                "metric": "shift_earnings_median_rub",
+                "value": shifts["predicted_shift_earnings_rub"].median(),
+            },
+            {
+                "metric": "rub_per_hour_p10",
+                "value": earnings.quantile(0.10),
+            },
+            {
+                "metric": "rub_per_hour_median",
+                "value": earnings.median(),
+            },
+            {
+                "metric": "low_expected_income_shifts",
+                "value": int(
+                    shifts.loc[
+                        shifts["low_expected_income"],
+                        "slots_to_create",
+                    ].sum()
+                ),
+            },
+        ]
     )
 
 
@@ -1321,14 +2255,34 @@ def build_reports(
                 "shift_hours",
                 "open_intervals",
                 "slots_to_create",
+                "predicted_orders_per_shift",
+                "avg_payment_per_order_rub",
+                "p70_delivery_minutes_per_order",
+                "peak_orders_per_hour",
+                "peak_hour",
+                "max_couriers_needed_in_shift",
+                "courier_need_source",
+                "predicted_shift_earnings_rub",
+                "predicted_rub_per_hour",
+                "low_expected_income",
             ]
         ]
         .sort_values(["date", "location_id", "vehicle_type", "shift_start"])
     )
+    money_and_order_columns = [
+        "predicted_orders_per_shift",
+        "avg_payment_per_order_rub",
+        "p70_delivery_minutes_per_order",
+        "peak_orders_per_hour",
+        "predicted_shift_earnings_rub",
+        "predicted_rub_per_hour",
+    ]
+    business_simple[money_and_order_columns] = business_simple[
+        money_and_order_columns
+    ].round(2)
 
     if {
-        "absorbed_partner_auto_slots",
-        "absorbed_partner_bike_slots",
+        "absorbed_partner_orders",
         "absorbed_partners",
     }.issubset(forecast_df.columns):
         absorb_by_day = (
@@ -1337,8 +2291,7 @@ def build_reports(
             )
             .groupby(["location_id", "date"], as_index=False)
             .agg(
-                absorbed_partner_auto_slots=("absorbed_partner_auto_slots", "sum"),
-                absorbed_partner_bike_slots=("absorbed_partner_bike_slots", "sum"),
+                absorbed_partner_orders=("absorbed_partner_orders", "sum"),
                 absorbed_partners=(
                     "absorbed_partners",
                     lambda s: ",".join(
@@ -1354,11 +2307,8 @@ def build_reports(
             on=["location_id", "date"],
             how="left",
         )
-        business_simple["absorbed_partner_auto_slots"] = (
-            business_simple["absorbed_partner_auto_slots"].fillna(0).astype(int)
-        )
-        business_simple["absorbed_partner_bike_slots"] = (
-            business_simple["absorbed_partner_bike_slots"].fillna(0).astype(int)
+        business_simple["absorbed_partner_orders"] = (
+            business_simple["absorbed_partner_orders"].fillna(0.0)
         )
         business_simple["absorbed_partners"] = business_simple[
             "absorbed_partners"
@@ -1430,6 +2380,7 @@ def save_business_group_reports(reports, output_dir):
         "daily_business_summary_by_vehicle": "business_group",
         "location_week_summary": "business_group",
         "weekly_business_summary": "business_group",
+        "hourly_courier_need_explanation": "business_group",
     }
     all_groups = sorted(
         set(reports["weekly_business_summary"]["business_group"].dropna().astype(str))
@@ -1449,13 +2400,28 @@ def save_business_group_reports(reports, output_dir):
 def main():
     forecast_df = load_forecast(FORECAST_PATH)
     locations_df = load_locations_metadata()
-    group_to_members = build_group_to_members()
-    partner_map = load_partner_donor_map()
-    forecast_df, absorb_audit = absorb_partner_demand(
-        forecast_df,
-        partner_map,
-        group_to_members,
+    partner_grouping = load_partner_grouping()
+    group_to_members = partner_grouping.planning_to_members
+    partner_map = partner_grouping.mapping_df
+    forecast_location_ids = set(forecast_df["location_id"].astype(str))
+    legacy_group_ids = sorted(
+        location_id
+        for location_id in forecast_location_ids
+        if location_id.startswith("grp_")
     )
+    if legacy_group_ids:
+        raise ValueError(
+            "Forecast contains legacy grp_* IDs. Regenerate week_model and "
+            f"courier_model with partner_donor_map.csv: {legacy_group_ids[:10]}"
+        )
+    absorbed_sources = set(partner_grouping.location_to_planning)
+    ungrouped_sources = sorted(forecast_location_ids & absorbed_sources)
+    if ungrouped_sources:
+        raise ValueError(
+            "Forecast still contains absorb partners. Group predictions before "
+            f"slot calculation: {ungrouped_sources[:10]}"
+        )
+    absorb_audit = load_partner_grouping_order_audit(FORECAST_PATH)
     transport_by_location = build_location_transport_lookup(locations_df)
     forecast_df = cm.enforce_transport_on_forecast(
         forecast_df,
@@ -1479,12 +2445,37 @@ def main():
         work_interval_lookup,
         group_to_members,
     )
-    hourly_df = expand_to_hourly_demand(forecast_df)
+    payment_rows, payment_metadata = load_orders_payment_report(
+        PAYMENT_REPORT_PATH
+    )
+    payment_rates = aggregate_payment_rates(
+        payment_rows,
+        partner_grouping,
+    )
+    payment_quality_audit = build_payment_quality_audit(
+        payment_rows,
+        payment_metadata,
+        forecast_df["segment_datetime"].min(),
+    )
+    delivery_p70_rates = load_delivery_p70_rates()
+    hourly_df = expand_to_hourly_demand(
+        forecast_df,
+        payment_rates,
+        delivery_p70_rates,
+    )
+    payment_quality_audit = pd.concat(
+        [
+            payment_quality_audit,
+            build_hourly_payment_quality(hourly_df),
+        ],
+        ignore_index=True,
+    )
     shift_plan = build_business_shift_plan(
         hourly_df,
         work_interval_lookup,
         group_to_members,
     )
+    shift_plan = attach_shift_delivery_p70(shift_plan, hourly_df)
     if shift_plan.empty:
         raise RuntimeError("No business shift rows were generated.")
 
@@ -1496,9 +2487,29 @@ def main():
         work_window_report,
     )
     reports["partner_absorb_audit"] = absorb_audit
+    reports["partner_grouping_config_audit"] = build_grouping_config_audit(
+        partner_grouping
+    )
     reports["partner_absorb_summary"] = build_partner_absorb_summary(
         absorb_audit,
         location_name_map,
+    )
+    reports["shift_earnings_audit"] = build_shift_earnings_audit(shift_plan)
+    reports["payment_input_quality_audit"] = payment_quality_audit
+    reports["control_week_validation"] = build_control_week_validation(
+        hourly_df,
+        shift_plan,
+        work_interval_lookup,
+        group_to_members,
+    )
+    reports["hourly_courier_need_explanation"] = (
+        build_hourly_courier_need_explanation(
+            hourly_df,
+            location_name_map,
+            business_group_map,
+            work_interval_lookup,
+            group_to_members,
+        )
     )
     save_reports(reports, OUTPUT_DIR)
     save_business_group_reports(reports, OUTPUT_DIR)
