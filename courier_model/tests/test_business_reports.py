@@ -154,6 +154,57 @@ class BusinessReportTests(unittest.TestCase):
         self.assertEqual(metrics["coverage_shortfall_courier_hours"], 0)
         self.assertEqual(metrics["multi_courier_shifts_over_12h"], 0)
 
+    def test_single_layer_trims_empty_open_window_edges(self):
+        hourly = pd.DataFrame(
+            [
+                {
+                    "location_id": "1",
+                    "date": "2026-07-20",
+                    "hour": hour,
+                    "segment": "medium",
+                    "vehicle_type": "auto",
+                    "slots_needed": 1 if 10 <= hour < 16 else 0,
+                    "predicted_orders": 1.0 if 10 <= hour < 16 else 0.0,
+                    "predicted_earning_pool_rub": (
+                        300.0 if 10 <= hour < 16 else 0.0
+                    ),
+                }
+                for hour in range(8, 23)
+            ]
+        )
+        plan = business_reports.build_business_shift_plan(
+            hourly,
+            {("1", 0): [(8.0, 23.0)]},
+            {},
+        )
+        self.assertEqual(plan.iloc[0]["shift_start"], "10:00")
+        self.assertEqual(plan.iloc[0]["shift_finish"], "16:00")
+        self.assertEqual(plan.iloc[0]["overcoverage_hours"], 0)
+
+    def test_calibration_gate_accepts_closer_candidate_with_full_coverage(self):
+        baseline = pd.DataFrame(
+            [{"vehicle_type": "auto", "shift_hours": 10, "slots_to_create": 2}]
+        )
+        candidate = pd.DataFrame(
+            [{"vehicle_type": "auto", "shift_hours": 10, "slots_to_create": 1}]
+        )
+        validation = pd.DataFrame(
+            [
+                {"metric": "coverage_shortfall_courier_hours", "value": 0},
+                {"metric": "all_shifts_over_12h", "value": 0},
+            ]
+        )
+        comparison, accepted = (
+            business_reports.build_courier_hour_calibration_comparison(
+                baseline,
+                candidate,
+                {"auto": 9.0, "bike": 0.0},
+                validation,
+            )
+        )
+        self.assertTrue(accepted)
+        self.assertTrue(comparison["candidate_accepted"].all())
+
 
 if __name__ == "__main__":
     unittest.main()

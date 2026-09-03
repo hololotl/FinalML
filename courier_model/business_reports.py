@@ -63,6 +63,15 @@ DELIVERY_DURATION_HOURLY_PATH = Path(
 MIN_SHIFT_RUB_PER_HOUR = float(
     os.getenv("MIN_SHIFT_RUB_PER_HOUR", "0")
 )
+SHIFT_OVERCOVERAGE_PENALTY = float(
+    os.getenv("SHIFT_OVERCOVERAGE_PENALTY", "2.0")
+)
+MINIMIZE_SHIFT_OVERCOVERAGE = (
+    os.getenv("MINIMIZE_SHIFT_OVERCOVERAGE", "1") == "1"
+)
+CALIBRATION_VEHICLE_WORSEN_TOLERANCE = float(
+    os.getenv("CALIBRATION_VEHICLE_WORSEN_TOLERANCE", "0.05")
+)
 KFM_ORGANIZATION_IDS = {
     "5",
     "3",
@@ -1169,6 +1178,15 @@ def build_single_courier_open_shifts(
         finish_bound = int(np.floor(interval_finish))
         if finish_bound <= start_bound:
             continue
+        if MINIMIZE_SHIFT_OVERCOVERAGE:
+            interval_active = np.where(demand[start_bound:finish_bound] > 0)[0]
+            if len(interval_active) == 0:
+                continue
+            demand_start = start_bound + int(interval_active.min())
+            demand_finish = start_bound + int(interval_active.max()) + 1
+        else:
+            demand_start = start_bound
+            demand_finish = finish_bound
 
         hourly_income = np.zeros(24, dtype=float)
         active = demand > 0
@@ -1176,8 +1194,8 @@ def build_single_courier_open_shifts(
             hourly_earnings[active] / np.maximum(demand[active], 1)
         )
         chunks = split_shift_into_max_hours(
-            start_bound,
-            finish_bound,
+            demand_start,
+            demand_finish,
             MAX_SHIFT_HOURS,
             hourly_income,
         )
@@ -1192,9 +1210,9 @@ def build_single_courier_open_shifts(
                 "segment": segment,
                 "vehicle_type": vehicle_type,
                 "shift_template": (
-                    "full_open_window"
+                    "single_layer_demand_span"
                     if len(chunks) == 1
-                    else "full_open_window_earnings_split"
+                    else "single_layer_demand_span_earnings_split"
                 ),
                 "shift_start": f"{chunk_start:02d}:00",
                 "shift_finish": f"{chunk_finish:02d}:00",
@@ -1250,15 +1268,22 @@ def choose_shift_template(residual, open_intervals, hourly_income=None):
     if not candidates:
         return None
     target_earnings = float(np.median([candidate[2] for candidate in candidates]))
-    best = max(
-        candidates,
-        key=lambda candidate: (
+    if MINIMIZE_SHIFT_OVERCOVERAGE:
+        score = lambda candidate: (
+            candidate[0] - SHIFT_OVERCOVERAGE_PENALTY * candidate[1],
+            -candidate[1],
+            candidate[0],
+            -abs(candidate[2] - target_earnings),
+            -candidate[6],
+        )
+    else:
+        score = lambda candidate: (
             candidate[0],
             -abs(candidate[2] - target_earnings),
             -candidate[1],
             -candidate[6],
-        ),
-    )
+        )
+    best = max(candidates, key=score)
     _, _, _, template_name, start_hour, end_hour, duration_hours = best
     return template_name, start_hour, end_hour, duration_hours
 
@@ -1578,9 +1603,15 @@ def _build_layer_rows_for_interval(
                 layer,
             )
             if layer == 1:
-                shift_start = start_bound
-                shift_finish = finish_bound
-                template_name = "full_open_window"
+                if MINIMIZE_SHIFT_OVERCOVERAGE:
+                    active_positions = np.where(layer_mask)[0]
+                    shift_start = start_bound + int(active_positions.min())
+                    shift_finish = start_bound + int(active_positions.max()) + 1
+                    template_name = "first_layer_demand_span"
+                else:
+                    shift_start = start_bound
+                    shift_finish = finish_bound
+                    template_name = "full_open_window"
                 enforce_max_shift_hours = True
             else:
                 residual = np.zeros(24, dtype=int)
@@ -2127,6 +2158,141 @@ def build_control_week_validation(
     )
 
 
+def forecast_with_baseline_slots(forecast_df):
+    required = {
+        "baseline_auto_slots_needed",
+        "baseline_bike_slots_needed",
+        "baseline_total_slots_needed",
+    }
+    if not required.issubset(forecast_df.columns):
+        return None
+    baseline = forecast_df.copy()
+    for vehicle_type in [cm.AUTO, cm.BIKE]:
+        baseline[f"{vehicle_type}_slots_needed"] = baseline[
+            f"baseline_{vehicle_type}_slots_needed"
+        ].astype(int)
+        baseline[f"{vehicle_type}_couriers_needed"] = baseline[
+            f"{vehicle_type}_slots_needed"
+        ]
+    baseline["total_slots_needed"] = baseline[
+        "baseline_total_slots_needed"
+    ].astype(int)
+    baseline["total_couriers_needed"] = baseline["total_slots_needed"]
+    return baseline
+
+
+def _plan_hours_by_vehicle(shift_plan):
+    if shift_plan is None or shift_plan.empty:
+        return {cm.AUTO: 0.0, cm.BIKE: 0.0}
+    rows = shift_plan.copy()
+    rows["courier_hours"] = (
+        pd.to_numeric(rows["shift_hours"], errors="coerce").fillna(0)
+        * pd.to_numeric(rows["slots_to_create"], errors="coerce").fillna(0)
+    )
+    totals = rows.groupby("vehicle_type")["courier_hours"].sum()
+    return {
+        vehicle_type: float(totals.get(vehicle_type, 0.0))
+        for vehicle_type in [cm.AUTO, cm.BIKE]
+    }
+
+
+def load_actual_courier_hours(forecast_path):
+    path = Path(forecast_path).parent / "actual_slots_by_window.csv"
+    if not path.exists():
+        return {cm.AUTO: 0.0, cm.BIKE: 0.0}
+    actual = pd.read_csv(path)
+    if actual.empty or "shift_overlap_hours" not in actual.columns:
+        return {cm.AUTO: 0.0, cm.BIKE: 0.0}
+    actual["shift_overlap_hours"] = pd.to_numeric(
+        actual["shift_overlap_hours"],
+        errors="coerce",
+    ).fillna(0)
+    totals = actual.groupby("vehicle_type")["shift_overlap_hours"].sum()
+    return {
+        vehicle_type: float(totals.get(vehicle_type, 0.0))
+        for vehicle_type in [cm.AUTO, cm.BIKE]
+    }
+
+
+def build_courier_hour_calibration_comparison(
+    baseline_plan,
+    candidate_plan,
+    actual_hours,
+    candidate_validation,
+):
+    baseline_hours = _plan_hours_by_vehicle(baseline_plan)
+    candidate_hours = _plan_hours_by_vehicle(candidate_plan)
+    actual_total = sum(actual_hours.values())
+    baseline_total = sum(baseline_hours.values())
+    candidate_total = sum(candidate_hours.values())
+
+    validation_metrics = dict(
+        zip(candidate_validation["metric"], candidate_validation["value"])
+    )
+    constraints_pass = (
+        float(validation_metrics.get("coverage_shortfall_courier_hours", 0)) == 0
+        and float(validation_metrics.get("all_shifts_over_12h", 0)) == 0
+    )
+    if actual_total > 0:
+        total_improves = abs(candidate_total - actual_total) < abs(
+            baseline_total - actual_total
+        )
+        vehicle_pass = all(
+            abs(candidate_hours[vehicle_type] - actual_hours[vehicle_type])
+            <= abs(baseline_hours[vehicle_type] - actual_hours[vehicle_type])
+            + CALIBRATION_VEHICLE_WORSEN_TOLERANCE
+            * max(actual_hours[vehicle_type], 1.0)
+            for vehicle_type in [cm.AUTO, cm.BIKE]
+        )
+        accepted = constraints_pass and total_improves and vehicle_pass
+        reason = (
+            "improved_holdout_without_coverage_loss"
+            if accepted
+            else "candidate_rejected_by_holdout_gate"
+        )
+    else:
+        accepted = constraints_pass
+        reason = (
+            "no_actual_holdout_use_validated_candidate"
+            if accepted
+            else "candidate_rejected_by_constraints"
+        )
+
+    rows = []
+    for model, hours in [
+        ("baseline", baseline_hours),
+        ("candidate", candidate_hours),
+    ]:
+        for vehicle_type in [cm.AUTO, cm.BIKE, "total"]:
+            actual_value = (
+                actual_total
+                if vehicle_type == "total"
+                else actual_hours[vehicle_type]
+            )
+            planned_value = (
+                sum(hours.values())
+                if vehicle_type == "total"
+                else hours[vehicle_type]
+            )
+            rows.append(
+                {
+                    "model": model,
+                    "vehicle_type": vehicle_type,
+                    "planned_courier_hours": planned_value,
+                    "actual_courier_hours": actual_value,
+                    "absolute_error_hours": abs(planned_value - actual_value),
+                    "courier_hour_ape": (
+                        abs(planned_value - actual_value) / actual_value
+                        if actual_value > 0
+                        else np.nan
+                    ),
+                    "candidate_accepted": accepted,
+                    "decision_reason": reason,
+                }
+            )
+    return pd.DataFrame(rows), accepted
+
+
 def build_reports(
     forecast_df,
     shift_plan,
@@ -2398,6 +2564,8 @@ def save_business_group_reports(reports, output_dir):
 
 
 def main():
+    global MINIMIZE_SHIFT_OVERCOVERAGE
+
     forecast_df = load_forecast(FORECAST_PATH)
     locations_df = load_locations_metadata()
     partner_grouping = load_partner_grouping()
@@ -2470,14 +2638,56 @@ def main():
         ],
         ignore_index=True,
     )
-    shift_plan = build_business_shift_plan(
+    candidate_shift_plan = build_business_shift_plan(
         hourly_df,
         work_interval_lookup,
         group_to_members,
     )
-    shift_plan = attach_shift_delivery_p70(shift_plan, hourly_df)
-    if shift_plan.empty:
+    if candidate_shift_plan.empty:
         raise RuntimeError("No business shift rows were generated.")
+    candidate_validation = build_control_week_validation(
+        hourly_df,
+        candidate_shift_plan,
+        work_interval_lookup,
+        group_to_members,
+    )
+
+    baseline_forecast = forecast_with_baseline_slots(forecast_df)
+    baseline_hourly = None
+    baseline_shift_plan = None
+    if baseline_forecast is not None:
+        baseline_hourly = expand_to_hourly_demand(
+            baseline_forecast,
+            payment_rates,
+            delivery_p70_rates,
+        )
+        previous_minimize = MINIMIZE_SHIFT_OVERCOVERAGE
+        MINIMIZE_SHIFT_OVERCOVERAGE = False
+        try:
+            baseline_shift_plan = build_business_shift_plan(
+                baseline_hourly,
+                work_interval_lookup,
+                group_to_members,
+            )
+        finally:
+            MINIMIZE_SHIFT_OVERCOVERAGE = previous_minimize
+
+    actual_hours = load_actual_courier_hours(FORECAST_PATH)
+    calibration_comparison, candidate_accepted = (
+        build_courier_hour_calibration_comparison(
+            baseline_shift_plan,
+            candidate_shift_plan,
+            actual_hours,
+            candidate_validation,
+        )
+    )
+    if candidate_accepted or baseline_shift_plan is None:
+        shift_plan = candidate_shift_plan
+    else:
+        forecast_df = baseline_forecast
+        hourly_df = baseline_hourly
+        shift_plan = baseline_shift_plan
+    shift_plan = attach_shift_delivery_p70(shift_plan, hourly_df)
 
     reports = build_reports(
         forecast_df,
@@ -2496,6 +2706,7 @@ def main():
     )
     reports["shift_earnings_audit"] = build_shift_earnings_audit(shift_plan)
     reports["payment_input_quality_audit"] = payment_quality_audit
+    reports["courier_hour_calibration_comparison"] = calibration_comparison
     reports["control_week_validation"] = build_control_week_validation(
         hourly_df,
         shift_plan,

@@ -1,0 +1,7 @@
+model,vehicle_type,planned_courier_hours,actual_courier_hours,absolute_error_hours,courier_hour_ape,candidate_accepted,decision_reason
+baseline,auto,8622.0,5889.0,2733.0,0.4640855832908813,True,improved_holdout_without_coverage_loss
+baseline,bike,7913.0,3512.0,4401.0,1.2531321184510251,True,improved_holdout_without_coverage_loss
+baseline,total,16535.0,9401.0,7134.0,0.7588554409105415,True,improved_holdout_without_coverage_loss
+candidate,auto,7714.0,5889.0,1825.0,0.30989981321107146,True,improved_holdout_without_coverage_loss
+candidate,bike,3720.0,3512.0,208.0,0.05922551252847381,True,improved_holdout_without_coverage_loss
+candidate,total,11434.0,9401.0,2033.0,0.2162535900436124,True,improved_holdout_without_coverage_loss

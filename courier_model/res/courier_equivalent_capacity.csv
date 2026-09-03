@@ -27,7 +27,7 @@ location_id,segment,time_segment,vehicle_type,courier_equiv,shift_overlap_hours
 115,high,morning,bike,14.0,28.0
 115,high,opening,auto,6.25,13.5
 12,high,afternoon,auto,24.0,72.0
-12,high,afternoon,bike,21.666666666666664,65.0
+12,high,afternoon,bike,21.666666666666668,65.0
 12,high,dinner,auto,22.0,66.0
 12,high,dinner,bike,11.0,33.0
 12,high,early_morning,auto,14.0,14.0

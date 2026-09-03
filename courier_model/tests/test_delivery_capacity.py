@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 
 from courier_model import delivery_duration_report
@@ -136,6 +137,63 @@ class DeliveryCapacityTests(unittest.TestCase):
         )
         self.assertEqual(value[2], "segment_cycle_time")
         self.assertAlmostEqual(value[0], (10 * 20 + 50 * 30) / 60)
+
+    def test_schedule_vehicle_share_uses_courier_hours_for_mixed_location(self):
+        schedule = pd.DataFrame(
+            [
+                {
+                    "location_id": "1",
+                    "vehicle_type": "auto",
+                    "schedule_start_dt": pd.Timestamp("2026-01-01 08:00"),
+                    "schedule_finish_dt": pd.Timestamp("2026-01-01 18:00"),
+                    "location_allocation": 1.0,
+                },
+                {
+                    "location_id": "1",
+                    "vehicle_type": "bike",
+                    "schedule_start_dt": pd.Timestamp("2026-01-01 08:00"),
+                    "schedule_finish_dt": pd.Timestamp("2026-01-01 10:00"),
+                    "location_allocation": 1.0,
+                },
+            ]
+        )
+        with patch.object(courier_main, "SCHEDULE_SHARE_PRIOR_HOURS", 0):
+            shares = courier_main.build_schedule_vehicle_share_lookup(schedule)
+        self.assertAlmostEqual(shares["1"]["auto"], 10 / 12)
+        self.assertAlmostEqual(shares["1"]["bike"], 2 / 12)
+
+    def test_joint_daily_rounding_conserves_daily_buffered_workload(self):
+        rows = pd.DataFrame(
+            [
+                {
+                    "location_id": "1",
+                    "segment_datetime": pd.Timestamp(f"2026-01-01 {hour:02d}:00"),
+                    "auto_selected_raw_slots": 0.2,
+                    "bike_selected_raw_slots": 0.0,
+                    "auto_slots_needed": 1,
+                    "bike_slots_needed": 0,
+                    "total_slots_needed": 1,
+                    "auto_couriers_needed": 1,
+                    "bike_couriers_needed": 0,
+                    "total_couriers_needed": 1,
+                }
+                for hour in [0, 6, 12, 18]
+            ]
+        )
+        with (
+            patch.object(courier_main, "CALIBRATED_SAFETY_BUFFER", 1.0),
+            patch.object(courier_main, "JOINT_DAILY_ROUNDING", True),
+        ):
+            rounded = courier_main.apply_joint_daily_rounding(rows)
+
+        self.assertEqual(rounded["total_slots_needed"].sum(), 1)
+        self.assertEqual(rounded["auto_slots_needed"].sum(), 1)
+        self.assertTrue(
+            np.array_equal(
+                rounded["total_slots_needed"].to_numpy(),
+                np.array([1, 0, 0, 0]),
+            )
+        )
 
 
 if __name__ == "__main__":

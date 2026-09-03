@@ -75,6 +75,13 @@ PRODUCTIVITY_MIN = float(os.getenv("PRODUCTIVITY_MIN", "1.0"))
 PRODUCTIVITY_MAX = float(os.getenv("PRODUCTIVITY_MAX", "30.0"))
 SLOT_CAPACITY_MULTIPLIER = float(os.getenv("SLOT_CAPACITY_MULTIPLIER", "1.30"))
 SLOT_ROUNDING_MODE = os.getenv("SLOT_ROUNDING_MODE", "combined")
+JOINT_DAILY_ROUNDING = os.getenv("JOINT_DAILY_ROUNDING", "1") == "1"
+CALIBRATED_SAFETY_BUFFER = float(
+    os.getenv("CALIBRATED_SAFETY_BUFFER", "1.0")
+)
+SCHEDULE_SHARE_PRIOR_HOURS = float(
+    os.getenv("SCHEDULE_SHARE_PRIOR_HOURS", "24")
+)
 CYCLE_TIME_PERCENTILE = os.getenv("CYCLE_TIME_PERCENTILE", "p80_minutes")
 CYCLE_TIME_RETURN_MULTIPLIER = float(
     os.getenv("CYCLE_TIME_RETURN_MULTIPLIER", "2.0")
@@ -1124,23 +1131,70 @@ def build_location_overall_share_lookup(order_df):
 
 
 def build_schedule_vehicle_share_lookup(schedule_df):
-    """When a location always runs only auto or only bike, lock the split."""
+    """Estimate the operational vehicle mix from scheduled courier-hours.
+
+    Mixed locations are shrunk towards the network mix so a small sample does
+    not swing the forecast. Locations which historically use only one allowed
+    vehicle remain locked to that vehicle.
+    """
     if schedule_df.empty:
         return {}
 
-    counts = (
-        schedule_df.groupby([schedule_df[LOCATION_COLUMN].astype(str), "vehicle_type"])
-        .size()
-        .reset_index(name="shifts")
+    schedule = schedule_df.copy()
+    duration_hours = (
+        schedule["schedule_finish_dt"] - schedule["schedule_start_dt"]
+    ).dt.total_seconds().clip(lower=0) / 3600.0
+    allocation = schedule.get(
+        "location_allocation",
+        pd.Series(1.0, index=schedule.index),
     )
+    schedule["courier_hours"] = duration_hours * allocation
+    counts = (
+        schedule.groupby(
+            [schedule[LOCATION_COLUMN].astype(str), "vehicle_type"],
+            as_index=False,
+        )["courier_hours"]
+        .sum()
+    )
+    global_hours = counts.groupby("vehicle_type")["courier_hours"].sum()
+    global_total = float(global_hours.sum())
+    global_share = {
+        vehicle_type: (
+            float(global_hours.get(vehicle_type, 0.0) / global_total)
+            if global_total > 0
+            else (DEFAULT_AUTO_SHARE if vehicle_type == AUTO else 1 - DEFAULT_AUTO_SHARE)
+        )
+        for vehicle_type in VEHICLE_TYPES
+    }
     lookup = {}
     for location_id, group in counts.groupby(LOCATION_COLUMN):
-        auto_shifts = int(group.loc[group["vehicle_type"] == AUTO, "shifts"].sum())
-        bike_shifts = int(group.loc[group["vehicle_type"] == BIKE, "shifts"].sum())
-        if bike_shifts == 0 and auto_shifts > 0:
+        auto_hours = float(
+            group.loc[group["vehicle_type"] == AUTO, "courier_hours"].sum()
+        )
+        bike_hours = float(
+            group.loc[group["vehicle_type"] == BIKE, "courier_hours"].sum()
+        )
+        total_hours = auto_hours + bike_hours
+        if total_hours <= 0:
+            continue
+        if bike_hours == 0 and auto_hours > 0:
             lookup[str(location_id)] = {AUTO: 1.0, BIKE: 0.0}
-        elif auto_shifts == 0 and bike_shifts > 0:
+        elif auto_hours == 0 and bike_hours > 0:
             lookup[str(location_id)] = {AUTO: 0.0, BIKE: 1.0}
+        else:
+            denominator = total_hours + SCHEDULE_SHARE_PRIOR_HOURS
+            lookup[str(location_id)] = {
+                AUTO: (
+                    auto_hours
+                    + SCHEDULE_SHARE_PRIOR_HOURS * global_share[AUTO]
+                )
+                / denominator,
+                BIKE: (
+                    bike_hours
+                    + SCHEDULE_SHARE_PRIOR_HOURS * global_share[BIKE]
+                )
+                / denominator,
+            }
     return lookup
 
 
@@ -1285,6 +1339,79 @@ def allocate_slots_from_raw_demand(raw_auto_slots, raw_bike_slots):
     return auto_slots, bike_slots
 
 
+def apply_joint_daily_rounding(forecast_df):
+    """Round daily workload jointly instead of ceiling every weak block.
+
+    The daily sum is conserved after the safety buffer. Integer slots are
+    assigned to blocks with the largest fractional workload first, then split
+    between vehicles according to their continuous demand.
+    """
+    if forecast_df.empty or not JOINT_DAILY_ROUNDING:
+        return forecast_df
+
+    result = forecast_df.copy()
+    result["_rounding_date"] = pd.to_datetime(
+        result["segment_datetime"]
+    ).dt.date.astype(str)
+    result["_total_scaled_raw"] = (
+        result["auto_selected_raw_slots"] + result["bike_selected_raw_slots"]
+    ) * CALIBRATED_SAFETY_BUFFER
+    result["calibrated_total_slots"] = 0
+
+    group_columns = [LOCATION_COLUMN, "_rounding_date"]
+    for _, index in result.groupby(group_columns, sort=False).groups.items():
+        group_index = list(index)
+        values = result.loc[group_index, "_total_scaled_raw"].clip(lower=0)
+        floors = np.floor(values).astype(int)
+        daily_target = int(np.ceil(values.sum()))
+        extras = max(daily_target - int(floors.sum()), 0)
+        fractions = values - floors
+        ranked = fractions.sort_values(ascending=False, kind="stable").index
+        totals = floors.copy()
+        if extras:
+            totals.loc[ranked[:extras]] += 1
+        result.loc[group_index, "calibrated_total_slots"] = totals
+
+    result["auto_slots_needed"] = 0
+    result["bike_slots_needed"] = 0
+    for _, index in result.groupby(group_columns, sort=False).groups.items():
+        group_index = list(index)
+        totals = result.loc[group_index, "calibrated_total_slots"].astype(int)
+        raw_total = (
+            result.loc[group_index, "auto_selected_raw_slots"]
+            + result.loc[group_index, "bike_selected_raw_slots"]
+        )
+        desired_auto = totals * (
+            result.loc[group_index, "auto_selected_raw_slots"]
+            / raw_total.replace(0, np.nan)
+        ).fillna(0.0)
+        auto_slots = np.floor(desired_auto).astype(int)
+        target_auto = int(np.rint(desired_auto.sum()))
+        auto_extras = max(target_auto - int(auto_slots.sum()), 0)
+        auto_ranked = (desired_auto - auto_slots).sort_values(
+            ascending=False,
+            kind="stable",
+        ).index
+        if auto_extras:
+            auto_slots.loc[auto_ranked[:auto_extras]] += 1
+        auto_slots = np.minimum(auto_slots, totals)
+        result.loc[group_index, "auto_slots_needed"] = auto_slots
+        result.loc[group_index, "bike_slots_needed"] = totals - auto_slots
+
+    result["auto_slots_needed"] = result["auto_slots_needed"].astype(int)
+    result["bike_slots_needed"] = result["bike_slots_needed"].astype(int)
+    result["total_slots_needed"] = (
+        result["auto_slots_needed"] + result["bike_slots_needed"]
+    )
+    result["auto_couriers_needed"] = result["auto_slots_needed"]
+    result["bike_couriers_needed"] = result["bike_slots_needed"]
+    result["total_couriers_needed"] = result["total_slots_needed"]
+    result["slot_rounding_strategy"] = "joint_location_day"
+    result["baseline_safety_buffer"] = SAFETY_BUFFER
+    result["safety_buffer"] = CALIBRATED_SAFETY_BUFFER
+    return result.drop(columns=["_rounding_date", "_total_scaled_raw"])
+
+
 def build_courier_forecast(
     pred_df,
     location_share,
@@ -1354,7 +1481,7 @@ def build_courier_forecast(
 
     rows = []
     for _, row in pred_df.iterrows():
-        shares = {
+        order_shares = {
             vehicle_type: lookup_vehicle_share(
                 row,
                 vehicle_type,
@@ -1365,11 +1492,16 @@ def build_courier_forecast(
             )
             for vehicle_type in VEHICLE_TYPES
         }
-        total_share = sum(shares.values())
+        total_share = sum(order_shares.values())
         if total_share <= 0:
-            shares = {AUTO: DEFAULT_AUTO_SHARE, BIKE: 1 - DEFAULT_AUTO_SHARE}
+            order_shares = {
+                AUTO: DEFAULT_AUTO_SHARE,
+                BIKE: 1 - DEFAULT_AUTO_SHARE,
+            }
             total_share = 1.0
-        shares = {k: v / total_share for k, v in shares.items()}
+        order_shares = {k: v / total_share for k, v in order_shares.items()}
+        shares = order_shares.copy()
+        vehicle_share_source = "order_history"
 
         transport = resolve_location_transport(
             row[LOCATION_COLUMN],
@@ -1382,6 +1514,7 @@ def build_courier_forecast(
             )
             if schedule_shares:
                 shares = schedule_shares.copy()
+                vehicle_share_source = "schedule_courier_hours"
 
         slot_capacity = {}
         slot_capacity_source = {}
@@ -1413,6 +1546,32 @@ def build_courier_forecast(
             )
 
         prediction = max(float(row["prediction"]), 0.0)
+        (
+            _,
+            baseline_auto_orders,
+            baseline_bike_orders,
+            _,
+            _,
+        ) = apply_transport_to_slot_plan(
+            transport,
+            prediction,
+            order_shares.copy(),
+            slot_capacity,
+        )
+        (
+            _,
+            _,
+            _,
+            _,
+            baseline_auto_slots,
+            baseline_bike_slots,
+        ) = select_slot_demand(
+            baseline_auto_orders,
+            baseline_bike_orders,
+            slot_capacity,
+            duration_minutes,
+            segment_hours(row["time_segment"]),
+        )
         shares, auto_orders, bike_orders, auto_slots, bike_slots = (
             apply_transport_to_slot_plan(
                 transport,
@@ -1451,6 +1610,7 @@ def build_courier_forecast(
             "bike_order_prediction": bike_orders,
             "auto_order_share": shares[AUTO],
             "bike_order_share": shares[BIKE],
+            "vehicle_share_source": vehicle_share_source,
             "auto_orders_per_slot": slot_capacity[AUTO],
             "bike_orders_per_slot": slot_capacity[BIKE],
             "auto_slot_capacity_source": slot_capacity_source[AUTO],
@@ -1472,6 +1632,11 @@ def build_courier_forecast(
             "auto_slots_needed": auto_slots,
             "bike_slots_needed": bike_slots,
             "total_slots_needed": auto_slots + bike_slots,
+            "baseline_auto_slots_needed": baseline_auto_slots,
+            "baseline_bike_slots_needed": baseline_bike_slots,
+            "baseline_total_slots_needed": (
+                baseline_auto_slots + baseline_bike_slots
+            ),
             # Backward-compatible aliases for previous MVP output readers.
             "auto_orders_per_courier": slot_capacity[AUTO],
             "bike_orders_per_courier": slot_capacity[BIKE],
@@ -1481,9 +1646,10 @@ def build_courier_forecast(
             "safety_buffer": SAFETY_BUFFER,
             "slot_capacity_multiplier": SLOT_CAPACITY_MULTIPLIER,
             "slot_rounding_mode": SLOT_ROUNDING_MODE,
+            "slot_rounding_strategy": "per_segment",
         })
 
-    return pd.DataFrame(rows)
+    return apply_joint_daily_rounding(pd.DataFrame(rows))
 
 def build_summary(forecast_df, history_start, history_finish):
     rows = [
@@ -1515,6 +1681,11 @@ def build_summary(forecast_df, history_start, history_finish):
             "value": forecast_df["total_slots_needed"].sum(),
         },
         {"metric": "safety_buffer", "value": SAFETY_BUFFER},
+        {
+            "metric": "calibrated_safety_buffer",
+            "value": CALIBRATED_SAFETY_BUFFER,
+        },
+        {"metric": "joint_daily_rounding", "value": JOINT_DAILY_ROUNDING},
         {"metric": "slot_capacity_multiplier", "value": SLOT_CAPACITY_MULTIPLIER},
         {"metric": "slot_rounding_mode", "value": SLOT_ROUNDING_MODE},
         {"metric": "cycle_time_percentile", "value": CYCLE_TIME_PERCENTILE},

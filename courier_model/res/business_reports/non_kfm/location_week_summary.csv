@@ -1,27 +1,24 @@
 business_group,location_id,segment,vehicle_type,slots_to_create,overcoverage_hours,location_name,predicted_orders
-non_kfm,54,medium,auto,27,24,Maroon,145.71722722882913
-non_kfm,597,low,auto,14,21,Rockets Тверской,44.440466466774225
-non_kfm,597,low,bike,14,70,Rockets Тверской,44.440466466774225
-non_kfm,125,medium,auto,14,4,Meraki,38.823057599748566
-non_kfm,222,low,auto,14,0,Ирис Химки,26.28842517117125
-non_kfm,516,low,auto,14,12,La Raquette by Pinskiy&Co,23.124800833104537
-non_kfm,19,medium,auto,14,0,Conversation Никитская,21.936959022568374
-non_kfm,36,low,auto,14,25,Friends Forever Botanica,17.573542198505383
-non_kfm,44,low,auto,14,7,Frankie Пятницкая,10.901702477703504
-non_kfm,124,low,auto,14,49,ЦБ AVA Bistro,8.24622195150652
-non_kfm,114,low,auto,11,0,Bluefin Скаковая,44.440466466774225
-non_kfm,53,low,auto,11,17,IZUMI,17.66781288313617
-non_kfm,188,low,auto,9,12,Мо Friends Bar & Dining Петровка,14.0101856217977
-non_kfm,72,low,auto,9,39,КО Магадан,9.451423490695074
-non_kfm,119,medium,auto,7,7,Bluefin Успенское,27.016103609900693
-non_kfm,94,medium,auto,7,42,КО Высота 5642,14.912711602518447
-non_kfm,94,medium,bike,7,35,КО Высота 5642,14.912711602518447
+non_kfm,54,medium,auto,16,16,Maroon,145.71722722882913
+non_kfm,114,low,auto,7,0,Bluefin Скаковая,44.440466466774225
+non_kfm,125,medium,auto,7,0,Meraki,38.823057599748566
+non_kfm,119,medium,auto,7,0,Bluefin Успенское,27.016103609900693
+non_kfm,222,low,auto,7,0,Ирис Химки,26.28842517117125
+non_kfm,516,low,auto,7,0,La Raquette by Pinskiy&Co,23.124800833104537
+non_kfm,19,medium,auto,7,0,Conversation Никитская,21.936959022568374
+non_kfm,53,low,auto,7,0,IZUMI,17.66781288313617
+non_kfm,36,low,auto,7,0,Friends Forever Botanica,17.573542198505383
+non_kfm,94,medium,auto,7,0,КО Высота 5642,14.912711602518447
 non_kfm,301,low,auto,7,0,Биродром и Панчетта Дежнева,14.362195044334902
-non_kfm,443,low,auto,7,28,Пинский доставка,11.950394004723194
+non_kfm,188,low,auto,7,0,Мо Friends Bar & Dining Петровка,14.0101856217977
+non_kfm,443,low,auto,7,0,Пинский доставка,11.950394004723194
 non_kfm,71,low,auto,7,0,КО Medusa,11.488119603006064
-non_kfm,43,low,auto,7,7,Frankie Новослободская,11.429703154014897
-non_kfm,145,low,auto,7,35,BSB Европейский,10.666879424172587
-non_kfm,70,low,auto,7,24,КО Сыроварня,9.370332016199422
-non_kfm,184,low,auto,7,49,Pasiba Sushi  Марьина Роща,8.845611371263027
-non_kfm,557,low,auto,1,6,Bocconcino Новослободская,7.323998623775635
-non_kfm,117,low,auto,1,6,Корнер Смоленская,7.063502876046192
+non_kfm,43,low,auto,7,0,Frankie Новослободская,11.429703154014897
+non_kfm,44,low,auto,7,0,Frankie Пятницкая,10.901702477703504
+non_kfm,145,low,auto,7,0,BSB Европейский,10.666879424172587
+non_kfm,72,low,auto,7,0,КО Магадан,9.451423490695074
+non_kfm,70,low,auto,7,0,КО Сыроварня,9.370332016199422
+non_kfm,184,low,auto,7,0,Pasiba Sushi  Марьина Роща,8.845611371263027
+non_kfm,124,low,auto,7,0,ЦБ AVA Bistro,8.24622195150652
+non_kfm,557,low,auto,1,0,Bocconcino Новослободская,7.323998623775635
+non_kfm,117,low,auto,1,0,Корнер Смоленская,7.063502876046192

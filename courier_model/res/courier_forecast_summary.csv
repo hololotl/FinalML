@@ -3,12 +3,14 @@ rows,2579
 history_start,2026-08-10 00:00:00+03:00
 history_finish,2026-08-24 00:00:00+03:00
 orders_prediction_sum,14318.278187619806
-auto_order_prediction_sum,6921.561671924874
-bike_order_prediction_sum,7396.716515694932
-auto_slots_needed_sum,2220
-bike_slots_needed_sum,2177
-total_slots_needed_sum,4397
+auto_order_prediction_sum,7743.3534975535695
+bike_order_prediction_sum,6574.924690066238
+auto_slots_needed_sum,2189
+bike_slots_needed_sum,1105
+total_slots_needed_sum,3294
 safety_buffer,1.15
+calibrated_safety_buffer,1.0
+joint_daily_rounding,True
 slot_capacity_multiplier,1.3
 slot_rounding_mode,combined
 cycle_time_percentile,p80_minutes

@@ -6,7 +6,7 @@ location_id,segment,time_segment,vehicle_type,orders,courier_equiv,shift_overlap
 115,high,lunch,auto,113.0,37.125,152.5,3.0437710437710437
 115,high,morning,auto,52.0,35.75,73.5,1.4545454545454546
 12,high,afternoon,auto,55.0,24.0,72.0,2.2916666666666665
-12,high,afternoon,bike,57.0,21.666666666666664,65.0,2.630769230769231
+12,high,afternoon,bike,57.0,21.666666666666668,65.0,2.6307692307692307
 12,high,dinner,auto,62.0,22.0,66.0,2.8181818181818183
 12,high,lunch,auto,89.0,23.125,92.5,3.848648648648649
 12,high,lunch,bike,122.0,25.0,100.0,4.88
