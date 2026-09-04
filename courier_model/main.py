@@ -49,6 +49,9 @@ DELIVERY_DURATION_PATH = Path(
 )
 
 HISTORY_LOOKBACK_DAYS = int(os.getenv("COURIER_HISTORY_LOOKBACK_DAYS", "14"))
+SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE = (
+    os.getenv("SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE", "1") == "1"
+)
 SAFETY_BUFFER = float(os.getenv("COURIER_SAFETY_BUFFER", "1.15"))
 MIN_PREDICTED_ORDERS_FOR_SLOT = float(
     os.getenv(
@@ -707,6 +710,84 @@ def prepare_schedule_history(schedule_df, location_to_group):
         1.0 / schedule_df["schedule_location_count"].clip(lower=1)
     )
     return schedule_df
+
+
+def build_locations_with_recent_schedule(schedule_df):
+    """Planning locations that had at least one courier schedule in history."""
+    if schedule_df.empty:
+        return set()
+    return set(schedule_df[LOCATION_COLUMN].astype(str).unique())
+
+
+def suppress_slots_without_recent_schedule(
+    forecast_df,
+    locations_with_recent_schedule,
+):
+    """Drop courier slots for locations without schedule in the lookback window."""
+    if forecast_df.empty:
+        return forecast_df
+
+    result = forecast_df.copy()
+    if not SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE:
+        result["slots_suppressed"] = False
+        result["slot_suppression_reason"] = ""
+        return result
+
+    location_key = result[LOCATION_COLUMN].astype(str)
+    suppressed = ~location_key.isin(locations_with_recent_schedule)
+    slot_columns = [
+        "auto_slots_needed",
+        "bike_slots_needed",
+        "total_slots_needed",
+        "auto_couriers_needed",
+        "bike_couriers_needed",
+        "total_couriers_needed",
+        "baseline_auto_slots_needed",
+        "baseline_bike_slots_needed",
+        "baseline_total_slots_needed",
+    ]
+    for column in slot_columns:
+        if column in result.columns:
+            result.loc[suppressed, column] = 0
+
+    result["slots_suppressed"] = suppressed
+    result["slot_suppression_reason"] = np.where(
+        suppressed,
+        "no_recent_schedule",
+        "",
+    )
+    return result
+
+
+def build_schedule_suppression_audit(
+    forecast_df,
+    locations_with_recent_schedule,
+    history_start,
+    history_finish,
+):
+    rows = []
+    for location_id in sorted(forecast_df[LOCATION_COLUMN].astype(str).unique()):
+        location_rows = forecast_df[
+            forecast_df[LOCATION_COLUMN].astype(str) == location_id
+        ]
+        has_recent = location_id in locations_with_recent_schedule
+        rows.append(
+            {
+                "location_id": location_id,
+                "history_start": str(history_start),
+                "history_finish": str(history_finish),
+                "has_recent_schedule": has_recent,
+                "slots_suppressed": not has_recent,
+                "forecast_rows": len(location_rows),
+                "orders_prediction_sum": float(
+                    location_rows["orders_prediction"].sum()
+                ),
+                "total_slots_needed_sum": int(
+                    location_rows["total_slots_needed"].sum()
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def build_courier_equivalent_by_segment(schedule_df, pred_df):
@@ -1429,7 +1510,11 @@ def build_courier_forecast(
     cycle_segment=None,
     cycle_time_segment=None,
     cycle_global=None,
+    locations_with_recent_schedule=None,
 ):
+    if locations_with_recent_schedule is None:
+        locations_with_recent_schedule = set()
+
     location_share_lookup = make_lookup(
         location_share,
         [LOCATION_COLUMN, "time_segment", "vehicle_type"],
@@ -1649,7 +1734,12 @@ def build_courier_forecast(
             "slot_rounding_strategy": "per_segment",
         })
 
-    return apply_joint_daily_rounding(pd.DataFrame(rows))
+    forecast_df = apply_joint_daily_rounding(pd.DataFrame(rows))
+    return suppress_slots_without_recent_schedule(
+        forecast_df,
+        locations_with_recent_schedule,
+    )
+
 
 def build_summary(forecast_df, history_start, history_finish):
     rows = [
@@ -1679,6 +1769,30 @@ def build_summary(forecast_df, history_start, history_finish):
         {
             "metric": "total_slots_needed_sum",
             "value": forecast_df["total_slots_needed"].sum(),
+        },
+        {
+            "metric": "suppress_slots_without_recent_schedule",
+            "value": SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE,
+        },
+        {
+            "metric": "history_lookback_days",
+            "value": HISTORY_LOOKBACK_DAYS,
+        },
+        {
+            "metric": "locations_with_recent_schedule",
+            "value": (
+                int(forecast_df.loc[~forecast_df["slots_suppressed"], LOCATION_COLUMN].nunique())
+                if "slots_suppressed" in forecast_df.columns
+                else np.nan
+            ),
+        },
+        {
+            "metric": "locations_slots_suppressed",
+            "value": (
+                int(forecast_df.loc[forecast_df["slots_suppressed"], LOCATION_COLUMN].nunique())
+                if "slots_suppressed" in forecast_df.columns
+                else 0
+            ),
         },
         {"metric": "safety_buffer", "value": SAFETY_BUFFER},
         {
@@ -1993,6 +2107,9 @@ def main():
 
     schedule_df = load_schedule_history(engine, history_start_ms, history_finish_ms)
     schedule_df = prepare_schedule_history(schedule_df, location_to_group)
+    locations_with_recent_schedule = build_locations_with_recent_schedule(
+        schedule_df
+    )
     schedule_vehicle_share_lookup = build_schedule_vehicle_share_lookup(schedule_df)
     courier_equiv = build_courier_equivalent_by_segment(
         schedule_df,
@@ -2028,6 +2145,13 @@ def main():
         cycle_segment,
         cycle_time_segment,
         cycle_global,
+        locations_with_recent_schedule,
+    )
+    schedule_suppression_audit_df = build_schedule_suppression_audit(
+        forecast_df,
+        locations_with_recent_schedule,
+        history_start,
+        history_finish,
     )
     prediction_start = pred_df["segment_datetime"].min()
     prediction_finish = pred_df["segment_end"].max()
@@ -2066,6 +2190,10 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     forecast_df.to_csv(OUTPUT_DIR / "courier_forecast.csv", index=False)
+    schedule_suppression_audit_df.to_csv(
+        OUTPUT_DIR / "schedule_suppression_audit.csv",
+        index=False,
+    )
     summary_df.to_csv(OUTPUT_DIR / "courier_forecast_summary.csv", index=False)
     cycle_impact_df.to_csv(
         OUTPUT_DIR / "cycle_time_impact_audit.csv",

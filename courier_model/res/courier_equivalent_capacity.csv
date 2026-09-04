@@ -2,7 +2,7 @@ location_id,segment,time_segment,vehicle_type,courier_equiv,shift_overlap_hours
 1,medium,block_06_12,bike,8.166666666666666,49.0
 1,medium,block_12_18,bike,13.333333333333334,83.0
 1,medium,block_18_24,auto,0.08333333333333333,0.5
-1,medium,block_18_24,bike,5.666666666666666,37.5
+1,medium,block_18_24,bike,5.666666666666667,37.5
 10,medium,block_06_12,bike,12.666666666666666,76.0
 10,medium,block_12_18,bike,17.416666666666668,104.5
 10,medium,block_18_24,bike,11.666666666666668,70.0

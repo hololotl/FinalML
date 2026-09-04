@@ -101,6 +101,36 @@ SHIFT_TEMPLATES = [
     ("late_16_24", 16, 8),
 ]
 
+BUSINESS_SHIFT_PLAN_SIMPLE_RU_COLUMNS = {
+    "location_id": "ID ресторана",
+    "location_name": "Название ресторана",
+    "business_group": "Группа",
+    "date": "Дата",
+    "segment": "Сегмент",
+    "vehicle_type": "Тип транспорта",
+    "shift_start": "Начало смены",
+    "shift_finish": "Конец смены",
+    "shift_hours": "Длительность смены, ч",
+    "open_intervals": "Часы работы ресторана",
+    "slots_to_create": "Слотов создать",
+    "predicted_orders_per_shift": "Заказов за смену, прогноз",
+    "avg_payment_per_order_rub": "Средняя оплата за заказ, ₽",
+    "p70_delivery_minutes_per_order": "P70 доставки на заказ, мин",
+    "peak_orders_per_hour": "Пик заказов в час",
+    "peak_hour": "Час пика",
+    "max_couriers_needed_in_shift": "Макс. курьеров в смене",
+    "courier_need_source": "Источник расчёта потребности",
+    "predicted_shift_earnings_rub": "Прогноз заработка за смену, ₽",
+    "predicted_rub_per_hour": "Прогноз, ₽/час",
+    "low_expected_income": "Низкий ожидаемый доход",
+    "absorbed_partner_orders": "Поглощённые заказы партнёров",
+    "absorbed_partners": "Поглощённые партнёры",
+}
+
+
+def export_business_shift_plan_simple(df):
+    return df.rename(columns=BUSINESS_SHIFT_PLAN_SIMPLE_RU_COLUMNS)
+
 
 def load_forecast(path):
     df = pd.read_csv(path)
@@ -2535,7 +2565,10 @@ def build_reports(
 def save_reports(reports, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, df in reports.items():
-        df.to_csv(output_dir / f"{name}.csv", index=False)
+        out_df = df
+        if name == "business_shift_plan_simple":
+            out_df = export_business_shift_plan_simple(df)
+        out_df.to_csv(output_dir / f"{name}.csv", index=False)
 
 
 def save_business_group_reports(reports, output_dir):
@@ -2560,6 +2593,8 @@ def save_business_group_reports(reports, output_dir):
                 continue
             group_df = df[df[group_col].astype(str) == business_group].copy()
             if not group_df.empty:
+                if name == "business_shift_plan_simple":
+                    group_df = export_business_shift_plan_simple(group_df)
                 group_df.to_csv(group_dir / f"{name}.csv", index=False)
 
 

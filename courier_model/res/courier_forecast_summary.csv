@@ -5,9 +5,13 @@ history_finish,2026-08-24 00:00:00+03:00
 orders_prediction_sum,14318.278187619806
 auto_order_prediction_sum,7743.3534975535695
 bike_order_prediction_sum,6574.924690066238
-auto_slots_needed_sum,2189
-bike_slots_needed_sum,1105
-total_slots_needed_sum,3294
+auto_slots_needed_sum,2001
+bike_slots_needed_sum,1018
+total_slots_needed_sum,3019
+suppress_slots_without_recent_schedule,True
+history_lookback_days,14
+locations_with_recent_schedule,39
+locations_slots_suppressed,62
 safety_buffer,1.15
 calibrated_safety_buffer,1.0
 joint_daily_rounding,True

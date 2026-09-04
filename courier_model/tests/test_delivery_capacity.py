@@ -195,6 +195,51 @@ class DeliveryCapacityTests(unittest.TestCase):
             )
         )
 
+    def test_suppress_slots_without_recent_schedule(self):
+        forecast = pd.DataFrame(
+            [
+                {
+                    "location_id": "1",
+                    "auto_slots_needed": 2,
+                    "bike_slots_needed": 1,
+                    "total_slots_needed": 3,
+                    "auto_couriers_needed": 2,
+                    "bike_couriers_needed": 1,
+                    "total_couriers_needed": 3,
+                    "baseline_auto_slots_needed": 2,
+                    "baseline_bike_slots_needed": 1,
+                    "baseline_total_slots_needed": 3,
+                    "orders_prediction": 10.0,
+                },
+                {
+                    "location_id": "2",
+                    "auto_slots_needed": 4,
+                    "bike_slots_needed": 0,
+                    "total_slots_needed": 4,
+                    "auto_couriers_needed": 4,
+                    "bike_couriers_needed": 0,
+                    "total_couriers_needed": 4,
+                    "baseline_auto_slots_needed": 4,
+                    "baseline_bike_slots_needed": 0,
+                    "baseline_total_slots_needed": 4,
+                    "orders_prediction": 20.0,
+                },
+            ]
+        )
+        with patch.object(courier_main, "SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE", True):
+            result = courier_main.suppress_slots_without_recent_schedule(
+                forecast,
+                {"1"},
+            )
+        active = result[result["location_id"] == "1"].iloc[0]
+        suppressed = result[result["location_id"] == "2"].iloc[0]
+        self.assertEqual(active["total_slots_needed"], 3)
+        self.assertFalse(active["slots_suppressed"])
+        self.assertEqual(suppressed["total_slots_needed"], 0)
+        self.assertTrue(suppressed["slots_suppressed"])
+        self.assertEqual(suppressed["slot_suppression_reason"], "no_recent_schedule")
+        self.assertEqual(suppressed["orders_prediction"], 20.0)
+
 
 if __name__ == "__main__":
     unittest.main()
