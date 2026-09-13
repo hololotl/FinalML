@@ -1,0 +1,8 @@
+business_group,date,vehicle_type,slots_to_create,overcoverage_hours
+non_kfm,2026-09-14,auto,5,6
+non_kfm,2026-09-15,auto,5,6
+non_kfm,2026-09-16,auto,5,0
+non_kfm,2026-09-17,auto,4,0
+non_kfm,2026-09-18,auto,5,0
+non_kfm,2026-09-19,auto,5,0
+non_kfm,2026-09-20,auto,5,0

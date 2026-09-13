@@ -1,6 +1,8 @@
 import os
 import importlib.util
 import pickle
+import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -11,6 +13,15 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from catboost import CatBoostRegressor
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
+
+from courier_model.partner_grouping import (
+    load_partner_grouping,
+    normalize_location_id,
+)
 
 DB_URL = os.getenv(
     "DB_URL",
@@ -35,23 +46,6 @@ UNDERPREDICT_SEGMENT_TIME = [
     ("medium", "block_06_12"),
     ("medium", "block_12_18"),
     ("medium", "block_18_24"),
-]
-MERGED_LOCATION_PAIRS = [
-    ("19", "54", 387),
-    ("71", "94", 200),
-    ("102", "125", 187),
-    ("288", "424", 150),
-    ("62", "140", 142),
-    ("136", "292", 134),
-    ("187", "296", 89),
-    ("130", "139", 62),
-    ("122", "131", 32),
-    ("98", "298", 22),
-    ("336", "340", 12),
-    ("302", "443", 4),
-    ("343", "346", 2),
-    ("420", "481", 2),
-    ("341", "347", 2),
 ]
 RUSSIAN_FIXED_HOLIDAYS = {
     (1, 1),   # New Year holidays
@@ -215,62 +209,20 @@ def prepare_data(df):
     return df
 
 
-def normalize_location_id(value):
-    value_str = str(value).strip()
-    if value_str.endswith(".0"):
-        candidate = value_str[:-2]
-        if candidate.isdigit():
-            return candidate
-    return value_str
-
-
 def build_merged_location_groups():
-    parent = {}
-
-    def find(x):
-        parent.setdefault(x, x)
-        if parent[x] != x:
-            parent[x] = find(parent[x])
-        return parent[x]
-
-    def union(a, b):
-        ra = find(a)
-        rb = find(b)
-        if ra != rb:
-            parent[rb] = ra
-
-    for left_id, right_id, _ in MERGED_LOCATION_PAIRS:
-        union(normalize_location_id(left_id), normalize_location_id(right_id))
-
-    members_by_root = {}
-    for left_id, right_id, _ in MERGED_LOCATION_PAIRS:
-        for location_id in [
-            normalize_location_id(left_id),
-            normalize_location_id(right_id),
-        ]:
-            root = find(location_id)
-            members_by_root.setdefault(root, set()).add(location_id)
-
-    location_to_group = {}
-    group_to_members = {}
-    for members in members_by_root.values():
-        sorted_members = sorted(members, key=int)
-        group_id = "grp_" + "_".join(sorted_members)
-        group_to_members[group_id] = sorted_members
-        for member in sorted_members:
-            location_to_group[member] = group_id
-
-    return location_to_group, group_to_members
+    """Compatibility wrapper; grouping now comes only from partner_donor_map.csv."""
+    grouping = load_partner_grouping()
+    return grouping.location_to_planning, grouping.planning_to_members
 
 
 def apply_location_grouping(df, location_to_group):
-    df = df.copy()
-    df[LOCATION_COLUMN] = (
-        df[LOCATION_COLUMN]
+    result = df.copy()
+    result[LOCATION_COLUMN] = (
+        result[LOCATION_COLUMN]
         .map(normalize_location_id)
-        .map(lambda x: location_to_group.get(x, x))
+        .map(lambda value: location_to_group.get(value, value))
     )
-    return df
+    return result
 
 
 def aggregate_hourly_after_grouping(hourly_df):
@@ -747,9 +699,9 @@ def create_segment_features(df):
         .apply(lambda g: _shift_by_days(g, 1))
     )
 
-    df["lag_56seg"] = (
+    df["lag_112seg"] = (
         df.groupby(LOCATION_COLUMN, group_keys=False)
-        .apply(lambda g: _shift_by_days(g, 7))
+        .apply(lambda g: _shift_by_days(g, 14))
     )
 
     df["prev_open_1seg"] = (
@@ -885,7 +837,7 @@ def create_segment_features(df):
         "lag_1seg",
         "lag_2seg",
         "lag_8seg",
-        "lag_56seg",
+        "lag_112seg",
         "rolling_mean_3seg",
         "rolling_mean_7d",
         "rolling_std_3seg",
@@ -1036,9 +988,9 @@ SAME_SEGMENT_FEATURES = [
     "rolling_same_segment_mean_3d",
     "rolling_same_segment_max_7d",
 ]
-WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES = [
+TWO_WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES = [
     # These require actual orders from the days/segments between forecast origin
-    # and forecast target, so they are unsafe for direct 7-day-ahead prediction.
+    # and forecast target, so they are unsafe for direct 14-day-ahead prediction.
     "lag_1seg",
     "lag_2seg",
     "lag_8seg",
@@ -1067,8 +1019,8 @@ def build_feature_matrix(df):
         "open_hours",
         "segment_rank",
 
-        # Week-ahead safe historical anchors.
-        "lag_56seg",
+        # Two-week-ahead safe historical anchor.
+        "lag_112seg",
 
         # Schedule-only shifted features are known for future dates.
         "prev_open_1seg",
@@ -1087,7 +1039,8 @@ def build_feature_matrix(df):
     # Ensure categorical features are not duplicated in the numeric list.
     features = [
         f for f in raw_features
-        if f not in cat_features and f not in WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES
+        if f not in cat_features
+        and f not in TWO_WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES
     ]
 
     return features, cat_features
@@ -1557,9 +1510,10 @@ def compute_peak_metrics(train_df, result_df):
     return peak_metrics_df, peak_examples_df
 
 
-def evaluate_group_predictions(result_df):
+def evaluate_group_predictions(result_df, group_to_members=None):
+    planning_group_ids = set((group_to_members or {}).keys())
     merged_df = result_df[
-        result_df[LOCATION_COLUMN].astype(str).str.startswith("grp_")
+        result_df[LOCATION_COLUMN].astype(str).isin(planning_group_ids)
     ].copy()
     if merged_df.empty:
         return pd.DataFrame(), pd.DataFrame()
@@ -1632,8 +1586,9 @@ def evaluate_group_predictions(result_df):
 
 
 def build_merged_group_predictions_df(result_df, group_to_members):
+    planning_group_ids = set(group_to_members.keys())
     merged_df = result_df[
-        result_df[LOCATION_COLUMN].astype(str).str.startswith("grp_")
+        result_df[LOCATION_COLUMN].astype(str).isin(planning_group_ids)
     ].copy()
     if merged_df.empty:
         return pd.DataFrame()
@@ -2193,10 +2148,12 @@ def build_underprediction_summary(result_df):
     )
 
 
-def print_merged_group_coverage(feature_df, train_df, test_df):
+def print_merged_group_coverage(feature_df, train_df, test_df, group_to_members):
+    planning_group_ids = set(group_to_members.keys())
+
     def _extract_groups(df):
         groups = df[
-            df[LOCATION_COLUMN].astype(str).str.startswith("grp_")
+            df[LOCATION_COLUMN].astype(str).isin(planning_group_ids)
         ][LOCATION_COLUMN].astype(str)
         return groups
 
@@ -2361,7 +2318,12 @@ def main():
     train_df, test_df = split_train_test(feature_df)
     print_group_stage_diagnostics("train_dataset", train_df)
     print_group_stage_diagnostics("test_dataset", test_df)
-    print_merged_group_coverage(feature_df, train_df, test_df)
+    print_merged_group_coverage(
+        feature_df,
+        train_df,
+        test_df,
+        group_to_members,
+    )
 
     ## add general location stats
     feature_df = add_location_stats(train_df, feature_df)
@@ -2423,7 +2385,8 @@ def main():
         top_n=10
     )
     group_metrics_df, group_time_metrics_df = evaluate_group_predictions(
-        final_result
+        final_result,
+        group_to_members,
     )
     underprediction_summary_df = build_underprediction_summary(final_result)
     feature_correlation_df = build_feature_correlation_report(

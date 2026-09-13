@@ -1,0 +1,122 @@
+location_id,date,segment,vehicle_type,shift_template,shift_start,shift_finish,shift_hours,open_intervals,slots_to_create,covered_need_hours,template_hours,overcoverage_hours,shift_window_predicted_orders,location_name,business_group
+100,2026-07-20,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,1.0644355433364006,Колбасный Цех / Магадан,non_kfm
+114,2026-07-20,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,0.8407901518676283,Bluefin Скаковая,non_kfm
+119,2026-07-20,medium,auto,full_open_window,11:00,22:00,11,11:00-22:00,1,10,11,1,2.2735387151514317,Bluefin Успенское,non_kfm
+222,2026-07-20,low,auto,full_open_window,06:00,23:00,17,06:00-23:59,1,6,17,11,1.490669846551283,Ирис Химки,non_kfm
+301,2026-07-20,medium,auto,full_open_window,12:00,23:00,11,12:00-23:00,1,5,11,6,1.046522578929049,Биродром и Панчетта Дежнева,non_kfm
+301,2026-07-20,medium,bike,full_open_window,12:00,23:00,11,12:00-23:00,1,6,11,5,0.8493592631963677,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-20,medium,auto,full_open_window,08:00,23:00,15,08:00-23:00,1,15,15,0,2.740134560605554,Friends Forever Botanica,non_kfm
+516,2026-07-20,low,auto,full_open_window,09:00,22:00,13,09:00-22:00,1,9,13,4,1.234624634181299,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-20,low,auto,full_open_window,12:00,23:00,11,12:00-23:30,1,5,11,6,0.6558092686715048,ЮГ 22,non_kfm
+560,2026-07-20,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,4,12,8,0.7207448879731727,Пафос,non_kfm
+597,2026-07-20,low,auto,full_open_window,09:00,22:00,13,09:00-22:30,1,4,13,9,0.7929465725840228,Rockets Тверской,non_kfm
+grp_102_125,2026-07-20,medium,auto,full_open_window,00:00,23:00,23,00:00-23:59,1,23,23,0,8.606569368234439,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-20,medium,auto,full_open_window,08:00,16:00,8,08:00-24:00,1,8,8,0,9.397237721739517,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-20,medium,auto,day_08_18,08:00,18:00,10,08:00-24:00,2,12,20,8,13.468567079189649,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-20,medium,auto,full_open_window,16:00,24:00,8,08:00-24:00,1,8,8,0,10.029214154672832,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-20,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,1.2425444849078975,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-20,medium,bike,full_open_window,12:00,23:00,11,12:00-23:59,1,11,11,0,1.211822602033789,КО Medusa + КО Высота 5642,non_kfm
+100,2026-07-21,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,0.959803883554496,Колбасный Цех / Магадан,non_kfm
+114,2026-07-21,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,0.84092131648406,Bluefin Скаковая,non_kfm
+119,2026-07-21,medium,auto,full_open_window,11:00,22:00,11,11:00-22:00,1,10,11,1,2.060989000294914,Bluefin Успенское,non_kfm
+222,2026-07-21,low,auto,full_open_window,06:00,23:00,17,06:00-23:59,1,6,17,11,1.4401804086211671,Ирис Химки,non_kfm
+301,2026-07-21,medium,auto,full_open_window,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-21,medium,auto,full_open_window,08:00,23:00,15,08:00-23:00,1,15,15,0,1.6219308330007038,Friends Forever Botanica,non_kfm
+516,2026-07-21,low,auto,full_open_window,09:00,22:00,13,09:00-22:00,1,9,13,4,1.1547061064233326,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-21,low,auto,full_open_window,12:00,23:00,11,12:00-23:30,1,5,11,6,0.6566620024705578,ЮГ 22,non_kfm
+560,2026-07-21,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,4,12,8,0.7208819697522669,Пафос,non_kfm
+597,2026-07-21,low,auto,full_open_window,09:00,22:00,13,09:00-22:30,1,4,13,9,0.7924343786764162,Rockets Тверской,non_kfm
+grp_102_125,2026-07-21,medium,auto,full_open_window,00:00,23:00,23,00:00-23:59,1,23,23,0,9.00028517607274,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-21,medium,auto,full_open_window,08:00,16:00,8,08:00-24:00,1,8,8,0,9.77856583199135,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-21,medium,auto,day_08_18,08:00,18:00,10,08:00-24:00,1,6,10,4,13.987689079742513,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-21,medium,auto,day_evening_12_22,12:00,24:00,12,08:00-24:00,1,12,12,0,22.768814828087216,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-21,medium,auto,full_open_window,16:00,24:00,8,08:00-24:00,1,8,8,0,14.350568332584889,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-21,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,8,12,4,1.330092063353962,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-21,medium,bike,full_open_window,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+100,2026-07-22,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,0.959803883554496,Колбасный Цех / Магадан,non_kfm
+114,2026-07-22,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,0.84092131648406,Bluefin Скаковая,non_kfm
+119,2026-07-22,medium,auto,full_open_window,11:00,22:00,11,11:00-22:00,1,10,11,1,2.060989000294914,Bluefin Успенское,non_kfm
+222,2026-07-22,low,auto,full_open_window,06:00,23:00,17,06:00-23:59,1,6,17,11,1.4401804086211671,Ирис Химки,non_kfm
+301,2026-07-22,medium,auto,full_open_window,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-22,medium,auto,full_open_window,08:00,23:00,15,08:00-23:00,1,15,15,0,2.306967467818984,Friends Forever Botanica,non_kfm
+516,2026-07-22,low,auto,full_open_window,09:00,22:00,13,09:00-22:00,1,9,13,4,1.1547061064233326,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-22,low,auto,full_open_window,12:00,23:00,11,12:00-23:30,1,5,11,6,0.6566620024705578,ЮГ 22,non_kfm
+560,2026-07-22,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,4,12,8,0.7208819697522669,Пафос,non_kfm
+597,2026-07-22,low,auto,full_open_window,09:00,22:00,13,09:00-22:30,1,4,13,9,0.7924343786764162,Rockets Тверской,non_kfm
+grp_102_125,2026-07-22,medium,auto,full_open_window,00:00,23:00,23,00:00-23:59,1,23,23,0,9.640196212931157,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-22,medium,auto,full_open_window,08:00,16:00,8,08:00-24:00,1,8,8,0,9.397237721739517,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-22,medium,auto,day_08_18,08:00,18:00,10,08:00-24:00,2,12,20,8,13.468567079189649,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-22,medium,auto,full_open_window,16:00,24:00,8,08:00-24:00,1,8,8,0,10.62609198241666,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-22,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,10,12,2,1.7253896908989343,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-22,medium,bike,full_open_window,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+100,2026-07-23,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,0.959803883554496,Колбасный Цех / Магадан,non_kfm
+114,2026-07-23,low,auto,full_open_window,10:00,23:00,13,10:00-23:59,1,7,13,6,0.9446260295770796,Bluefin Скаковая,non_kfm
+119,2026-07-23,medium,auto,full_open_window,11:00,23:00,12,11:00-23:00,1,11,12,1,2.3344672012818126,Bluefin Успенское,non_kfm
+222,2026-07-23,low,auto,full_open_window,06:00,23:00,17,06:00-23:59,1,6,17,11,1.4401804086211671,Ирис Химки,non_kfm
+301,2026-07-23,medium,auto,full_open_window,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-23,medium,auto,full_open_window,08:00,23:00,15,08:00-23:00,1,15,15,0,2.435262940507964,Friends Forever Botanica,non_kfm
+516,2026-07-23,low,auto,full_open_window,09:00,22:00,13,09:00-22:00,1,9,13,4,1.1547061064233326,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-23,low,auto,full_open_window,12:00,23:00,11,12:00-23:30,1,5,11,6,0.6566620024705578,ЮГ 22,non_kfm
+560,2026-07-23,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,4,12,8,0.7208819697522669,Пафос,non_kfm
+597,2026-07-23,low,auto,full_open_window,09:00,22:00,13,09:00-22:30,1,4,13,9,0.7924343786764162,Rockets Тверской,non_kfm
+grp_102_125,2026-07-23,medium,auto,full_open_window,00:00,23:00,23,00:00-23:59,1,23,23,0,11.774193510700755,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-23,medium,auto,full_open_window,08:00,16:00,8,08:00-24:00,1,8,8,0,9.631030064139885,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-23,medium,auto,day_08_18,08:00,18:00,10,08:00-24:00,1,6,10,4,13.766385427965314,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-23,medium,auto,day_evening_12_22,12:00,24:00,12,08:00-24:00,1,12,12,0,21.740800338445663,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-23,medium,auto,full_open_window,16:00,24:00,8,08:00-24:00,1,8,8,0,13.470089610794805,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-23,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,1.2425444849078975,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-23,medium,bike,full_open_window,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+100,2026-07-24,medium,auto,full_open_window,10:00,23:00,13,10:00-23:00,1,6,13,7,1.0786255762676455,Колбасный Цех / Магадан,non_kfm
+114,2026-07-24,low,auto,full_open_window,10:00,23:00,13,10:00-23:59,1,7,13,6,0.9446260295770796,Bluefin Скаковая,non_kfm
+119,2026-07-24,medium,auto,full_open_window,11:00,23:00,12,11:00-23:00,1,11,12,1,2.3344672012818126,Bluefin Успенское,non_kfm
+222,2026-07-24,low,auto,full_open_window,06:00,23:00,17,06:00-23:59,1,6,17,11,1.4401804086211671,Ирис Химки,non_kfm
+301,2026-07-24,medium,auto,full_open_window,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9866768724459057,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-24,medium,auto,full_open_window,08:00,23:00,15,08:00-23:00,1,15,15,0,2.447908561964602,Friends Forever Botanica,non_kfm
+516,2026-07-24,low,auto,full_open_window,09:00,22:00,13,09:00-22:00,1,9,13,4,1.1864334300466917,La Raquette by Pinskiy&Co,non_kfm
+53,2026-07-24,low,auto,full_open_window,00:00,05:00,5,11:00-05:00,1,0,5,5,0.13586804486774992,IZUMI,non_kfm
+53,2026-07-24,low,auto,full_open_window,11:00,24:00,13,11:00-05:00,1,6,13,7,0.9412548878896996,IZUMI,non_kfm
+558,2026-07-24,low,auto,full_open_window,12:00,23:00,11,12:00-23:30,1,5,11,6,0.6566620024705578,ЮГ 22,non_kfm
+560,2026-07-24,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,4,12,8,0.7208819697522669,Пафос,non_kfm
+597,2026-07-24,low,auto,full_open_window,09:00,22:00,13,09:00-22:30,1,4,13,9,0.7924343786764162,Rockets Тверской,non_kfm
+grp_102_125,2026-07-24,medium,auto,full_open_window,00:00,23:00,23,00:00-23:59,1,23,23,0,10.860951356879365,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-24,medium,auto,full_open_window,08:00,16:00,8,08:00-24:00,1,8,8,0,9.879240486241363,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-24,medium,auto,day_08_18,08:00,18:00,10,08:00-24:00,1,6,10,4,14.191571225942416,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-24,medium,auto,day_evening_12_22,12:00,24:00,12,08:00-24:00,1,12,12,0,23.272513863755904,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-24,medium,auto,full_open_window,16:00,24:00,8,08:00-24:00,1,8,8,0,14.647852384353797,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-24,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,10,12,2,1.416671783828562,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-24,medium,bike,full_open_window,12:00,23:00,11,12:00-23:59,1,11,11,0,1.1298115539362308,КО Medusa + КО Высота 5642,non_kfm
+100,2026-07-25,medium,auto,full_open_window,10:00,23:00,13,10:00-23:00,1,6,13,7,0.9835931461258439,Колбасный Цех / Магадан,non_kfm
+114,2026-07-25,low,auto,full_open_window,10:00,23:00,13,10:00-23:59,1,7,13,6,0.9106718500203246,Bluefin Скаковая,non_kfm
+119,2026-07-25,medium,auto,full_open_window,11:00,23:00,12,11:00-23:00,1,11,12,1,2.2086730463311044,Bluefin Успенское,non_kfm
+222,2026-07-25,low,auto,full_open_window,06:00,23:00,17,06:00-23:59,1,6,17,11,1.328563224549194,Ирис Химки,non_kfm
+301,2026-07-25,medium,auto,full_open_window,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9291987751515141,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-25,medium,auto,full_open_window,08:00,23:00,15,08:00-23:00,1,15,15,0,2.544946394907359,Friends Forever Botanica,non_kfm
+516,2026-07-25,low,auto,full_open_window,09:00,22:00,13,09:00-22:00,1,9,13,4,1.1134946920309006,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-25,low,auto,full_open_window,12:00,23:00,11,12:00-23:30,1,5,11,6,0.6306650956744725,ЮГ 22,non_kfm
+560,2026-07-25,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,4,12,8,0.6929702993099636,Пафос,non_kfm
+597,2026-07-25,low,auto,full_open_window,09:00,22:00,13,09:00-22:30,1,4,13,9,0.7649276550235043,Rockets Тверской,non_kfm
+grp_102_125,2026-07-25,medium,auto,full_open_window,00:00,23:00,23,00:00-23:59,1,23,23,0,9.825969080801455,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-25,medium,auto,full_open_window,08:00,16:00,8,08:00-24:00,1,8,8,0,8.445805684626533,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-25,medium,auto,day_08_18,08:00,18:00,10,08:00-24:00,1,6,10,4,12.015072979149723,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-25,medium,auto,full_open_window,16:00,24:00,8,08:00-24:00,1,8,8,0,9.998053776168994,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-25,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,10,12,2,1.7808194189983377,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-25,medium,auto,full_open_window,12:00,23:00,11,12:00-23:59,1,5,11,6,1.3127859941602076,КО Medusa + КО Высота 5642,non_kfm
+grp_71_94,2026-07-25,medium,bike,full_open_window,12:00,23:00,11,12:00-23:59,1,6,11,5,1.0635973975331456,КО Medusa + КО Высота 5642,non_kfm
+100,2026-07-26,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,6,12,6,0.8632043197175376,Колбасный Цех / Магадан,non_kfm
+114,2026-07-26,low,auto,full_open_window,10:00,23:00,13,10:00-23:59,1,7,13,6,0.9106718500203246,Bluefin Скаковая,non_kfm
+119,2026-07-26,medium,auto,full_open_window,11:00,23:00,12,11:00-23:00,1,11,12,1,2.2086730463311044,Bluefin Успенское,non_kfm
+222,2026-07-26,low,auto,full_open_window,06:00,23:00,17,06:00-23:59,1,6,17,11,1.3729086061214224,Ирис Химки,non_kfm
+301,2026-07-26,medium,auto,full_open_window,12:00,23:00,11,12:00-23:00,1,5,11,6,0.9291987751515141,Биродром и Панчетта Дежнева,non_kfm
+36,2026-07-26,medium,auto,full_open_window,08:00,23:00,15,08:00-23:00,1,15,15,0,1.5608265796676926,Friends Forever Botanica,non_kfm
+516,2026-07-26,low,auto,full_open_window,09:00,22:00,13,09:00-22:00,1,9,13,4,1.0701112364625773,La Raquette by Pinskiy&Co,non_kfm
+558,2026-07-26,low,auto,full_open_window,12:00,23:00,11,12:00-23:30,1,5,11,6,0.6306650956744725,ЮГ 22,non_kfm
+560,2026-07-26,low,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,4,12,8,0.6929702993099636,Пафос,non_kfm
+597,2026-07-26,low,auto,full_open_window,09:00,22:00,13,09:00-22:30,1,4,13,9,0.7649276550235043,Rockets Тверской,non_kfm
+grp_102_125,2026-07-26,medium,auto,full_open_window,00:00,23:00,23,00:00-23:59,1,23,23,0,12.091434440751298,Мясо&Рыба Тверская + Meraki,non_kfm
+grp_19_54,2026-07-26,medium,auto,full_open_window,08:00,16:00,8,08:00-24:00,1,8,8,0,9.81062444187009,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-26,medium,auto,day_08_18,08:00,18:00,10,08:00-24:00,1,6,10,4,14.116262407206229,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-26,medium,auto,day_evening_12_22,12:00,24:00,12,08:00-24:00,1,12,12,0,22.710121583586908,Conversation Никитская + Maroon,non_kfm
+grp_19_54,2026-07-26,medium,auto,full_open_window,16:00,24:00,8,08:00-24:00,1,8,8,0,14.098845652914637,Conversation Никитская + Maroon,non_kfm
+grp_302_443,2026-07-26,medium,auto,full_open_window,10:00,22:00,12,10:00-22:00,1,10,12,2,1.3982535905495155,Ribambelle Шелепиха + Пинский доставка,non_kfm
+grp_71_94,2026-07-26,medium,auto,full_open_window,12:00,23:00,11,12:00-23:59,1,5,11,6,1.3127859941602076,КО Medusa + КО Высота 5642,non_kfm
+grp_71_94,2026-07-26,medium,bike,full_open_window,12:00,23:00,11,12:00-23:59,1,6,11,5,1.0635973975331456,КО Medusa + КО Высота 5642,non_kfm

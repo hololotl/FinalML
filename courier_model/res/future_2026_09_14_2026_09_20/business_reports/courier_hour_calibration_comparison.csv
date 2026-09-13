@@ -1,0 +1,7 @@
+model,vehicle_type,planned_courier_hours,actual_courier_hours,absolute_error_hours,courier_hour_ape,candidate_accepted,decision_reason
+baseline,auto,7029.0,0.0,7029.0,,True,no_actual_holdout_use_validated_candidate
+baseline,bike,6685.0,0.0,6685.0,,True,no_actual_holdout_use_validated_candidate
+baseline,total,13714.0,0.0,13714.0,,True,no_actual_holdout_use_validated_candidate
+candidate,auto,7293.0,0.0,7293.0,,True,no_actual_holdout_use_validated_candidate
+candidate,bike,3871.0,0.0,3871.0,,True,no_actual_holdout_use_validated_candidate
+candidate,total,11164.0,0.0,11164.0,,True,no_actual_holdout_use_validated_candidate

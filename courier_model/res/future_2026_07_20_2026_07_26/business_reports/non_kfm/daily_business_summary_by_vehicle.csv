@@ -1,0 +1,15 @@
+business_group,date,vehicle_type,slots_to_create,overcoverage_hours
+non_kfm,2026-07-20,auto,16,71
+non_kfm,2026-07-20,bike,2,5
+non_kfm,2026-07-21,auto,16,65
+non_kfm,2026-07-21,bike,1,0
+non_kfm,2026-07-22,auto,16,67
+non_kfm,2026-07-22,bike,1,0
+non_kfm,2026-07-23,auto,16,67
+non_kfm,2026-07-23,bike,1,0
+non_kfm,2026-07-24,auto,18,76
+non_kfm,2026-07-24,bike,1,0
+non_kfm,2026-07-25,auto,16,70
+non_kfm,2026-07-25,bike,1,5
+non_kfm,2026-07-26,auto,17,69
+non_kfm,2026-07-26,bike,1,5

@@ -1,0 +1,82 @@
+partner_location_id,partner_name,kfm_donor_id,kfm_donor_name,mode,notes,planning_location_id,action
+482,ВАНЛАВ Нежинская,69,Опен Мичуринский,absorb,primary Мичура,69,group_before_slot_calculation
+483,ВАНЛАВ Винницкая,69,Опен Мичуринский,absorb,primary Мичура,69,group_before_slot_calculation
+424,Корнер Ланового,69,Опен Мичуринский,absorb,приоритет Мичура,69,group_before_slot_calculation
+116,Корнер Дмитровка,7,Белая Площадь,absorb,приоритет Белая,7,group_before_slot_calculation
+117,Корнер Смоленская,,,skip,только пешие,117,keep_independent
+302,Ribambelle Шелепиха,12,Хорошо,absorb,,12,group_before_slot_calculation
+422,Ribambelle Кутузовский,11,Кутузовский,absorb,,11,group_before_slot_calculation
+383,Ribambelle Проспект Мира,7,Белая Площадь,absorb,,7,group_before_slot_calculation
+181,Ribambelle Оболенский,8,Усачева,absorb,,8,group_before_slot_calculation
+62,Печорин Новочеремушкинская,30,Черёмушки,absorb,,30,group_before_slot_calculation
+64,Печорин Ленинский,35,Ленинский,absorb,,35,group_before_slot_calculation
+59,Печорин Шаболовка,33,Даниловский,absorb,,33,group_before_slot_calculation
+58,Печорин Тишинка,7,Белая Площадь,absorb,,7,group_before_slot_calculation
+98,Печорин Угрешская,4,Аврора,absorb,,4,group_before_slot_calculation
+68,Печорин Горки-2,21,Горки-2,absorb,,21,group_before_slot_calculation
+67,Печорин Петровский,348,Рига Холл,absorb,,348,group_before_slot_calculation
+60,Печорин Карбышева,9,КИНКИ,absorb,,9,group_before_slot_calculation
+61,Печорин Шелепиха,12,Хорошо,absorb,,12,group_before_slot_calculation
+382,Печорин Звенигородская,128,Кофемания Лаки,absorb,,128,group_before_slot_calculation
+66,Печорин Можайский,29,Украинский,absorb,,29,group_before_slot_calculation
+381,Печорин Мытная,33,Даниловский,absorb,,33,group_before_slot_calculation
+63,Печорин Вавилова,30,Черёмушки,absorb,,30,group_before_slot_calculation
+65,Печорин Усачева,8,Усачева,absorb,,8,group_before_slot_calculation
+144,Печорин Кутузовский,29,Украинский,absorb,,29,group_before_slot_calculation
+478,Сыроварня Метрополис,14,Метрополис,absorb,,14,group_before_slot_calculation
+550,Bocconcino Метрополис,14,Метрополис,absorb,,14,group_before_slot_calculation
+187,Биродром и Панчетта Народное ополчение,12,Хорошо,absorb,,12,group_before_slot_calculation
+298,Ив. Дурдинъ Волгоградский,4,Аврора,absorb,,4,group_before_slot_calculation
+288,Биродром и Ив.Дурдинъ Мичуринский,69,Опен Мичуринский,absorb,,69,group_before_slot_calculation
+122,Косяк Тишинка,7,Белая Площадь,absorb,,7,group_before_slot_calculation
+121,Косяк Новая Рига,18,Новая Рига,absorb,,18,group_before_slot_calculation
+423,Brasserie 2.0 select,128,Кофемания Лаки,absorb,,128,group_before_slot_calculation
+338,Saray,2,Кудринская,absorb,,2,group_before_slot_calculation
+51,БТ Новинский,,,skip,уже KFM,51,keep_independent
+346,Margarita bistro,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+340,Lucky Izakaya bar,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+336,Koji,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+341,Loro,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+337,Mamie,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+344,Eleven coffee,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+438,Brasserie Lambric Красина,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+342,Maya,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+421,Mosto,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+444,ТАКАХУЛИ,2,Кудринская,absorb,пешая зона,2,group_before_slot_calculation
+102,Мясо&Рыба Тверская,29,Украинский,absorb,,29,group_before_slot_calculation
+23,I Love Cake,,,skip,любому свободному,23,keep_independent
+120,I love cake x Grande Bibliotheca Slava,,,skip,любому свободному,120,keep_independent
+19,Conversation Никитская,,,skip,любому свободному,19,keep_independent
+24,Conversation Остоженка,,,skip,любому свободному,24,keep_independent
+41,Friends Forever Grande,,,skip,любому свободному,41,keep_independent
+36,Friends Forever Botanica,,,skip,любому свободному,36,keep_independent
+437,Brasserie Lambic Проспект Мира,6,Неглинная,absorb,,6,group_before_slot_calculation
+425,Волконский Сретенка,6,Неглинная,absorb,,6,group_before_slot_calculation
+427,Волконский Бухвостова,6,Неглинная,absorb,,6,group_before_slot_calculation
+426,Волконский (Б.Садовая),128,Кофемания Лаки,absorb,,128,group_before_slot_calculation
+137,БТ Мясницкая,,,skip,уже KFM,137,keep_independent
+479,Покровка,,,skip,уже KFM org,479,keep_independent
+136,Ikura,6,Неглинная,absorb,,6,group_before_slot_calculation
+189,AMI CHAISE Динамо,7,Белая Площадь,absorb,,7,group_before_slot_calculation
+432,San Si,6,Неглинная,absorb,,6,group_before_slot_calculation
+292,Узбекистан,6,Неглинная,absorb,,6,group_before_slot_calculation
+182,Miss You,4,Аврора,absorb,,4,group_before_slot_calculation
+339,Лондри,29,Украинский,absorb,,29,group_before_slot_calculation
+146,Maestrello Покровка,6,Неглинная,absorb,,6,group_before_slot_calculation
+480,Сыроварня Атриум,4,Аврора,absorb,,4,group_before_slot_calculation
+138,БТ Таганка,,,skip,уже KFM,138,keep_independent
+439,Brasserie Lambric Шаболовка,33,Даниловский,absorb,,33,group_before_slot_calculation
+517,INSPIRO Neurobistro,8,Усачева,absorb,,8,group_before_slot_calculation
+130,EVA Хамовники,8,Усачева,absorb,,8,group_before_slot_calculation
+420,Osteria Osso,7,Белая Площадь,absorb,,7,group_before_slot_calculation
+140,Клёво Черемушки,30,Черёмушки,absorb,,30,group_before_slot_calculation
+139,Клёво Усачева,30,Черёмушки,absorb,,30,group_before_slot_calculation
+554,Bocconcino Мичуринский,69,Опен Мичуринский,absorb,,69,group_before_slot_calculation
+553,Bocconcino Кутузовский,69,Опен Мичуринский,absorb,,69,group_before_slot_calculation
+551,Bocconcino Авиапарк,14,Метрополис,absorb,,14,group_before_slot_calculation
+47,БТ Царская Площадь,,,skip,уже KFM,47,keep_independent
+22,Жажда Крови,,,skip,уже KFM,22,keep_independent
+131,EVA Б.Грузинская,7,Белая Площадь,absorb,,7,group_before_slot_calculation
+296,Клево Авиапарк,101,Алия,absorb,,101,group_before_slot_calculation
+552,Bocconcino Депо Лесная,29,Украинский,absorb,,29,group_before_slot_calculation
+555,Bocconcino Ленинский,35,Ленинский,absorb,,35,group_before_slot_calculation
