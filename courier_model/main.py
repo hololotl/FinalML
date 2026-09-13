@@ -52,6 +52,9 @@ HISTORY_LOOKBACK_DAYS = int(os.getenv("COURIER_HISTORY_LOOKBACK_DAYS", "14"))
 SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE = (
     os.getenv("SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE", "1") == "1"
 )
+MINIMUM_BASE_COURIER_FOR_ACTIVE_LOCATIONS = (
+    os.getenv("MINIMUM_BASE_COURIER_FOR_ACTIVE_LOCATIONS", "1") == "1"
+)
 SAFETY_BUFFER = float(os.getenv("COURIER_SAFETY_BUFFER", "1.15"))
 MIN_PREDICTED_ORDERS_FOR_SLOT = float(
     os.getenv(
@@ -757,6 +760,104 @@ def suppress_slots_without_recent_schedule(
         "",
     )
     return result
+
+
+def ensure_minimum_base_courier(forecast_df):
+    """Keep one stable courier layer across the day for active locations.
+
+    Suppressed locations remain at zero. For every other location/day, the
+    dominant planned vehicle is used as the base layer in every model segment.
+    Business reports later clip that layer to the restaurant's open interval.
+    """
+    if forecast_df.empty:
+        return forecast_df
+
+    result = forecast_df.copy()
+    result["minimum_base_courier_added"] = False
+    result["base_courier_vehicle"] = ""
+    if not MINIMUM_BASE_COURIER_FOR_ACTIVE_LOCATIONS:
+        return result
+
+    suppressed_mask = result.get(
+        "slots_suppressed",
+        pd.Series(False, index=result.index),
+    ).astype(bool)
+    for column in [
+        "auto_slots_needed",
+        "bike_slots_needed",
+        "total_slots_needed",
+        "auto_couriers_needed",
+        "bike_couriers_needed",
+        "total_couriers_needed",
+        "baseline_auto_slots_needed",
+        "baseline_bike_slots_needed",
+        "baseline_total_slots_needed",
+    ]:
+        if column in result.columns:
+            result.loc[suppressed_mask, column] = 0
+
+    result["_base_date"] = pd.to_datetime(
+        result["segment_datetime"]
+    ).dt.date.astype(str)
+    group_columns = [LOCATION_COLUMN, "_base_date"]
+    for _, index in result.groupby(group_columns, sort=False).groups.items():
+        group_index = list(index)
+        group = result.loc[group_index]
+        if group.get(
+            "slots_suppressed",
+            pd.Series(False, index=group.index),
+        ).all():
+            continue
+
+        slot_totals = {
+            vehicle_type: float(
+                group[f"{vehicle_type}_slots_needed"].sum()
+            )
+            for vehicle_type in VEHICLE_TYPES
+        }
+        if slot_totals[AUTO] == slot_totals[BIKE]:
+            order_totals = {
+                vehicle_type: float(
+                    group[f"{vehicle_type}_order_prediction"].sum()
+                )
+                for vehicle_type in VEHICLE_TYPES
+            }
+            base_vehicle = max(VEHICLE_TYPES, key=order_totals.get)
+        else:
+            base_vehicle = max(VEHICLE_TYPES, key=slot_totals.get)
+
+        slot_column = f"{base_vehicle}_slots_needed"
+        missing_base = result.loc[group_index, slot_column].astype(int) < 1
+        missing_index = missing_base[missing_base].index
+        result.loc[group_index, "base_courier_vehicle"] = base_vehicle
+        if len(missing_index) == 0:
+            continue
+
+        result.loc[missing_index, slot_column] = 1
+        result.loc[missing_index, "minimum_base_courier_added"] = True
+        baseline_column = f"baseline_{base_vehicle}_slots_needed"
+        if baseline_column in result.columns:
+            result.loc[missing_index, baseline_column] = np.maximum(
+                result.loc[missing_index, baseline_column].astype(int),
+                1,
+            )
+
+    result["total_slots_needed"] = (
+        result["auto_slots_needed"].astype(int)
+        + result["bike_slots_needed"].astype(int)
+    )
+    result["auto_couriers_needed"] = result["auto_slots_needed"].astype(int)
+    result["bike_couriers_needed"] = result["bike_slots_needed"].astype(int)
+    result["total_couriers_needed"] = result["total_slots_needed"].astype(int)
+    if {
+        "baseline_auto_slots_needed",
+        "baseline_bike_slots_needed",
+    }.issubset(result.columns):
+        result["baseline_total_slots_needed"] = (
+            result["baseline_auto_slots_needed"].astype(int)
+            + result["baseline_bike_slots_needed"].astype(int)
+        )
+    return result.drop(columns=["_base_date"])
 
 
 def build_schedule_suppression_audit(
@@ -1735,10 +1836,11 @@ def build_courier_forecast(
         })
 
     forecast_df = apply_joint_daily_rounding(pd.DataFrame(rows))
-    return suppress_slots_without_recent_schedule(
+    forecast_df = suppress_slots_without_recent_schedule(
         forecast_df,
         locations_with_recent_schedule,
     )
+    return ensure_minimum_base_courier(forecast_df)
 
 
 def build_summary(forecast_df, history_start, history_finish):
@@ -1773,6 +1875,10 @@ def build_summary(forecast_df, history_start, history_finish):
         {
             "metric": "suppress_slots_without_recent_schedule",
             "value": SUPPRESS_SLOTS_WITHOUT_RECENT_SCHEDULE,
+        },
+        {
+            "metric": "minimum_base_courier_for_active_locations",
+            "value": MINIMUM_BASE_COURIER_FOR_ACTIVE_LOCATIONS,
         },
         {
             "metric": "history_lookback_days",

@@ -699,9 +699,9 @@ def create_segment_features(df):
         .apply(lambda g: _shift_by_days(g, 1))
     )
 
-    df["lag_56seg"] = (
+    df["lag_112seg"] = (
         df.groupby(LOCATION_COLUMN, group_keys=False)
-        .apply(lambda g: _shift_by_days(g, 7))
+        .apply(lambda g: _shift_by_days(g, 14))
     )
 
     df["prev_open_1seg"] = (
@@ -837,7 +837,7 @@ def create_segment_features(df):
         "lag_1seg",
         "lag_2seg",
         "lag_8seg",
-        "lag_56seg",
+        "lag_112seg",
         "rolling_mean_3seg",
         "rolling_mean_7d",
         "rolling_std_3seg",
@@ -988,9 +988,9 @@ SAME_SEGMENT_FEATURES = [
     "rolling_same_segment_mean_3d",
     "rolling_same_segment_max_7d",
 ]
-WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES = [
+TWO_WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES = [
     # These require actual orders from the days/segments between forecast origin
-    # and forecast target, so they are unsafe for direct 7-day-ahead prediction.
+    # and forecast target, so they are unsafe for direct 14-day-ahead prediction.
     "lag_1seg",
     "lag_2seg",
     "lag_8seg",
@@ -1019,8 +1019,8 @@ def build_feature_matrix(df):
         "open_hours",
         "segment_rank",
 
-        # Week-ahead safe historical anchors.
-        "lag_56seg",
+        # Two-week-ahead safe historical anchor.
+        "lag_112seg",
 
         # Schedule-only shifted features are known for future dates.
         "prev_open_1seg",
@@ -1039,7 +1039,8 @@ def build_feature_matrix(df):
     # Ensure categorical features are not duplicated in the numeric list.
     features = [
         f for f in raw_features
-        if f not in cat_features and f not in WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES
+        if f not in cat_features
+        and f not in TWO_WEEK_AHEAD_UNAVAILABLE_ORDER_FEATURES
     ]
 
     return features, cat_features

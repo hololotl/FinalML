@@ -240,6 +240,50 @@ class DeliveryCapacityTests(unittest.TestCase):
         self.assertEqual(suppressed["slot_suppression_reason"], "no_recent_schedule")
         self.assertEqual(suppressed["orders_prediction"], 20.0)
 
+    def test_minimum_base_courier_covers_all_segments_but_not_suppressed_location(self):
+        forecast = pd.DataFrame(
+            [
+                {
+                    "location_id": location_id,
+                    "segment_datetime": pd.Timestamp(
+                        f"2026-09-14 {hour:02d}:00"
+                    ),
+                    "auto_order_prediction": 0.0,
+                    "bike_order_prediction": bike_orders,
+                    "auto_slots_needed": 0,
+                    "bike_slots_needed": bike_slots,
+                    "total_slots_needed": bike_slots,
+                    "auto_couriers_needed": 0,
+                    "bike_couriers_needed": bike_slots,
+                    "total_couriers_needed": bike_slots,
+                    "baseline_auto_slots_needed": 0,
+                    "baseline_bike_slots_needed": bike_slots,
+                    "baseline_total_slots_needed": bike_slots,
+                    "slots_suppressed": location_id == "2",
+                }
+                for location_id in ["1", "2"]
+                for hour, bike_orders, bike_slots in [
+                    (6, 6.0, 0),
+                    (12, 10.0, 1),
+                    (18, 5.0, 1),
+                ]
+            ]
+        )
+        with patch.object(
+            courier_main,
+            "MINIMUM_BASE_COURIER_FOR_ACTIVE_LOCATIONS",
+            True,
+        ):
+            result = courier_main.ensure_minimum_base_courier(forecast)
+
+        active = result[result["location_id"] == "1"]
+        suppressed = result[result["location_id"] == "2"]
+        self.assertTrue((active["bike_slots_needed"] >= 1).all())
+        self.assertEqual(active["base_courier_vehicle"].unique().tolist(), ["bike"])
+        self.assertEqual(active["minimum_base_courier_added"].sum(), 1)
+        self.assertTrue((suppressed["total_slots_needed"] == 0).all())
+        self.assertTrue((suppressed["base_courier_vehicle"] == "").all())
+
 
 if __name__ == "__main__":
     unittest.main()

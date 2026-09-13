@@ -1,0 +1,13 @@
+metric,value
+control_week_start,2026-09-14
+control_week_finish,2026-09-21
+required_courier_hours,10277
+planned_courier_hours,11164
+coverage_shortfall_courier_hours,0
+multi_courier_shifts_over_12h,0
+all_shifts_over_12h,0
+shift_earnings_p10_rub,2779.8374412221024
+shift_earnings_median_rub,4946.616793775008
+rub_per_hour_p10,340.4424338118392
+rub_per_hour_median,625.2646569796796
+low_expected_income_shifts,0

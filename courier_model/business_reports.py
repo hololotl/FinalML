@@ -1601,6 +1601,33 @@ def _iter_contiguous_true_runs(mask):
         yield start, len(mask)
 
 
+def _merge_adjacent_layer_runs(shift_start, shift_finish, uncovered_runs):
+    """Merge only runs touching the same layer's main shift.
+
+    A separated peak remains a separate short shift. A prefix such as 07-10
+    touching a 10-21 shift becomes 07-21 and is subsequently split by the
+    regular max-hours/earnings logic.
+    """
+    merged_start = int(shift_start)
+    merged_finish = int(shift_finish)
+    remaining = [(int(start), int(finish)) for start, finish in uncovered_runs]
+    changed = True
+    while changed:
+        changed = False
+        next_remaining = []
+        for run_start, run_finish in remaining:
+            if run_finish == merged_start:
+                merged_start = run_start
+                changed = True
+            elif run_start == merged_finish:
+                merged_finish = run_finish
+                changed = True
+            else:
+                next_remaining.append((run_start, run_finish))
+        remaining = next_remaining
+    return merged_start, merged_finish, remaining
+
+
 def _build_layer_rows_for_interval(
     location_id,
     date,
@@ -1668,6 +1695,30 @@ def _build_layer_rows_for_interval(
                 shift_finish = max(int(shift_finish), int(active_finish))
                 shift_finish = min(int(shift_finish), int(finish_bound))
                 enforce_max_shift_hours = True
+            covered_mask = np.zeros_like(layer_mask, dtype=bool)
+            covered_start = max(int(shift_start), start_bound) - start_bound
+            covered_finish = min(int(shift_finish), finish_bound) - start_bound
+            if covered_finish > covered_start:
+                covered_mask[covered_start:covered_finish] = True
+            uncovered_mask = layer_mask & ~covered_mask
+            uncovered_runs = [
+                (
+                    start_bound + int(run_start),
+                    start_bound + int(run_finish),
+                )
+                for run_start, run_finish in _iter_contiguous_true_runs(
+                    uncovered_mask
+                )
+            ]
+            merged_start, merged_finish, remaining_runs = (
+                _merge_adjacent_layer_runs(
+                    shift_start,
+                    shift_finish,
+                    uncovered_runs,
+                )
+            )
+            if merged_start != int(shift_start) or merged_finish != int(shift_finish):
+                template_name = f"{template_name}_with_adjacent_demand"
             _append_shift_row(
                 rows,
                 location_id,
@@ -1678,21 +1729,13 @@ def _build_layer_rows_for_interval(
                 hourly_orders,
                 hourly_earnings,
                 open_intervals_display,
-                shift_start,
-                shift_finish,
+                merged_start,
+                merged_finish,
                 layer,
                 template_name,
                 enforce_max_shift_hours=enforce_max_shift_hours,
             )
-            covered_mask = np.zeros_like(layer_mask, dtype=bool)
-            covered_start = max(int(shift_start), start_bound) - start_bound
-            covered_finish = min(int(shift_finish), finish_bound) - start_bound
-            if covered_finish > covered_start:
-                covered_mask[covered_start:covered_finish] = True
-            uncovered_mask = layer_mask & ~covered_mask
-            for run_start, run_finish in _iter_contiguous_true_runs(
-                uncovered_mask
-            ):
+            for run_start, run_finish in remaining_runs:
                 _append_shift_row(
                     rows,
                     location_id,
@@ -1703,8 +1746,8 @@ def _build_layer_rows_for_interval(
                     hourly_orders,
                     hourly_earnings,
                     open_intervals_display,
-                    start_bound + int(run_start),
-                    start_bound + int(run_finish),
+                    run_start,
+                    run_finish,
                     layer,
                     "demand_layer_gap",
                 )

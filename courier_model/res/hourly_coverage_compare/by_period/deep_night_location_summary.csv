@@ -1,0 +1,6 @@
+location_id,location_name,vehicle_type,time_period,time_period_ru,active_hours,exact_hours,exact_match_rate,forecast_courier_hours,actual_courier_hours,avg_forecast_couriers,avg_actual_couriers,under_hours,over_hours,mae,worst_hour_abs_diff
+11,Кутузовский,total,deep_night,Глубокая ночь,42,6,0.14285714285714285,126,170,3.0,4.0476190476190474,47,3,1.1904761904761905,3
+6,Неглинная,total,deep_night,Глубокая ночь,9,2,0.2222222222222222,6,5,0.6666666666666666,0.5555555555555556,3,4,0.7777777777777778,1
+479,Покровка,total,deep_night,Глубокая ночь,42,12,0.2857142857142857,12,43,0.2857142857142857,1.0238095238095237,31,0,0.7380952380952381,2
+7,Белая Площадь,total,deep_night,Глубокая ночь,42,22,0.5238095238095238,42,32,1.0,0.7619047619047619,5,15,0.47619047619047616,1
+34,Аркус,total,deep_night,Глубокая ночь,42,29,0.6904761904761905,42,46,1.0,1.0952380952380953,9,5,0.3333333333333333,2

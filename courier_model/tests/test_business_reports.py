@@ -181,6 +181,54 @@ class BusinessReportTests(unittest.TestCase):
         self.assertEqual(plan.iloc[0]["shift_finish"], "16:00")
         self.assertEqual(plan.iloc[0]["overcoverage_hours"], 0)
 
+    def test_adjacent_short_prefix_is_merged_before_shift_split(self):
+        merged_start, merged_finish, remaining = (
+            business_reports._merge_adjacent_layer_runs(
+                10,
+                21,
+                [(7, 10), (3, 5), (21, 22)],
+            )
+        )
+        self.assertEqual((merged_start, merged_finish), (7, 22))
+        self.assertEqual(remaining, [(3, 5)])
+
+    def test_contiguous_layer_demand_does_not_create_short_gap_shifts(self):
+        hourly = pd.DataFrame(
+            [
+                {
+                    "location_id": "29",
+                    "date": "2026-09-14",
+                    "hour": hour,
+                    "segment": "mega",
+                    "vehicle_type": "auto",
+                    "slots_needed": need,
+                    "predicted_orders": float(need),
+                    "predicted_earning_pool_rub": float(need * 500),
+                }
+                for hour, need in zip(
+                    range(7, 22),
+                    [3, 5, 7, 7, 8, 8, 8, 8, 6, 6, 6, 6, 6, 6, 2],
+                )
+            ]
+        )
+        plan = business_reports.build_business_shift_plan(
+            hourly,
+            {("29", 0): [(7.0, 22.0)]},
+            {},
+        )
+        self.assertFalse(
+            plan["shift_template"].str.fullmatch("demand_layer_gap").any()
+        )
+        self.assertTrue((plan["shift_hours"] <= 12).all())
+        validation = business_reports.build_control_week_validation(
+            hourly,
+            plan,
+            {("29", 0): [(7.0, 22.0)]},
+            {},
+        )
+        metrics = dict(zip(validation["metric"], validation["value"]))
+        self.assertEqual(metrics["coverage_shortfall_courier_hours"], 0)
+
     def test_calibration_gate_accepts_closer_candidate_with_full_coverage(self):
         baseline = pd.DataFrame(
             [{"vehicle_type": "auto", "shift_hours": 10, "slots_to_create": 2}]
