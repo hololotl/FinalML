@@ -1,0 +1,10 @@
+metric,value
+rows,2684.0
+baseline_total_slots,4256.0
+selected_total_slots,3482.0
+total_slot_delta,-774.0
+rows_with_slot_increase,156.0
+auto_cycle_time_win_rate,0.44150521609538
+bike_cycle_time_win_rate,0.25447093889716843
+auto_missing_duration_rate,0.0
+bike_missing_duration_rate,0.0
