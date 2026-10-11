@@ -29,6 +29,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 10,2026-09-28,20,1,total,1,Якиманка,0,0,dinner,Ужин
 10,2026-09-28,21,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
 10,2026-09-28,22,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
+10,2026-09-28,23,1,total,0,Якиманка,1,1,late_evening,Поздний вечер
 101,2026-09-28,8,2,total,1,Алия,1,1,early_morning,Раннее утро
 101,2026-09-28,9,2,total,2,Алия,0,0,morning,Утро
 101,2026-09-28,10,4,total,2,Алия,2,2,morning,Утро
@@ -50,8 +51,9 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 11,2026-09-28,4,3,total,2,Кутузовский,1,1,deep_night,Глубокая ночь
 11,2026-09-28,5,3,total,5,Кутузовский,-2,2,deep_night,Глубокая ночь
 11,2026-09-28,6,3,total,5,Кутузовский,-2,2,opening,Открытие
-11,2026-09-28,7,0,total,3,Кутузовский,-3,3,opening,Открытие
-11,2026-09-28,8,0,total,1,Кутузовский,-1,1,early_morning,Раннее утро
+11,2026-09-28,7,3,total,3,Кутузовский,0,0,opening,Открытие
+11,2026-09-28,8,3,total,1,Кутузовский,2,2,early_morning,Раннее утро
+11,2026-09-28,21,1,total,0,Кутузовский,1,1,late_evening,Поздний вечер
 11,2026-09-28,22,1,total,2,Кутузовский,-1,1,late_evening,Поздний вечер
 11,2026-09-28,23,1,total,3,Кутузовский,-2,2,late_evening,Поздний вечер
 115,2026-09-28,7,1,total,2,Опен Символ,-1,1,opening,Открытие
@@ -99,7 +101,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 123,2026-09-28,20,1,total,1,Опен Нева,0,0,dinner,Ужин
 123,2026-09-28,21,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 123,2026-09-28,22,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
-123,2026-09-28,23,0,total,1,Опен Нева,-1,1,late_evening,Поздний вечер
+123,2026-09-28,23,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 125,2026-09-28,10,1,total,0,Meraki,1,1,morning,Утро
 125,2026-09-28,11,1,total,0,Meraki,1,1,lunch,Обед
 125,2026-09-28,12,1,total,0,Meraki,1,1,lunch,Обед
@@ -190,6 +192,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 142,2026-09-28,20,1,total,1,RED7,0,0,dinner,Ужин
 142,2026-09-28,21,1,total,1,RED7,0,0,late_evening,Поздний вечер
 142,2026-09-28,22,1,total,0,RED7,1,1,late_evening,Поздний вечер
+142,2026-09-28,23,1,total,0,RED7,1,1,late_evening,Поздний вечер
 16,2026-09-28,8,1,total,1,Мосфильм,0,0,early_morning,Раннее утро
 16,2026-09-28,9,1,total,1,Мосфильм,0,0,morning,Утро
 16,2026-09-28,10,1,total,2,Мосфильм,-1,1,morning,Утро
@@ -371,7 +374,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 34,2026-09-28,4,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-09-28,5,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-09-28,6,1,total,1,Аркус,0,0,opening,Открытие
-34,2026-09-28,7,0,total,1,Аркус,-1,1,opening,Открытие
+34,2026-09-28,7,1,total,1,Аркус,0,0,opening,Открытие
 34,2026-09-28,22,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 34,2026-09-28,23,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 348,2026-09-28,8,1,total,1,Рига Холл,0,0,early_morning,Раннее утро
@@ -402,7 +405,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 35,2026-09-28,20,4,total,4,Ленинский,0,0,dinner,Ужин
 35,2026-09-28,21,1,total,3,Ленинский,-2,2,late_evening,Поздний вечер
 35,2026-09-28,22,1,total,2,Ленинский,-1,1,late_evening,Поздний вечер
-37,2026-09-28,7,0,total,3,БТ Усачева,-3,3,opening,Открытие
+37,2026-09-28,7,1,total,3,БТ Усачева,-2,2,opening,Открытие
 37,2026-09-28,8,1,total,3,БТ Усачева,-2,2,early_morning,Раннее утро
 37,2026-09-28,9,1,total,4,БТ Усачева,-3,3,morning,Утро
 37,2026-09-28,10,1,total,4,БТ Усачева,-3,3,morning,Утро
@@ -564,7 +567,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 604,2026-09-28,20,1,total,0,Cihan Комсомольский,1,1,dinner,Ужин
 604,2026-09-28,21,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-09-28,22,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
-69,2026-09-28,7,0,total,5,Опен Мичуринский,-5,5,opening,Открытие
+69,2026-09-28,7,1,total,5,Опен Мичуринский,-4,4,opening,Открытие
 69,2026-09-28,8,6,total,6,Опен Мичуринский,0,0,early_morning,Раннее утро
 69,2026-09-28,9,6,total,6,Опен Мичуринский,0,0,morning,Утро
 69,2026-09-28,10,6,total,6,Опен Мичуринский,0,0,morning,Утро
@@ -604,7 +607,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 7,2026-09-28,21,4,total,4,Белая Площадь,0,0,late_evening,Поздний вечер
 7,2026-09-28,22,3,total,3,Белая Площадь,0,0,late_evening,Поздний вечер
 7,2026-09-28,23,3,total,1,Белая Площадь,2,2,late_evening,Поздний вечер
-8,2026-09-28,7,0,total,3,Усачева,-3,3,opening,Открытие
+8,2026-09-28,7,1,total,3,Усачева,-2,2,opening,Открытие
 8,2026-09-28,8,3,total,3,Усачева,0,0,early_morning,Раннее утро
 8,2026-09-28,9,3,total,4,Усачева,-1,1,morning,Утро
 8,2026-09-28,10,3,total,4,Усачева,-1,1,morning,Утро
@@ -682,6 +685,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 10,2026-09-29,20,1,total,1,Якиманка,0,0,dinner,Ужин
 10,2026-09-29,21,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
 10,2026-09-29,22,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
+10,2026-09-29,23,1,total,0,Якиманка,1,1,late_evening,Поздний вечер
 101,2026-09-29,8,3,total,1,Алия,2,2,early_morning,Раннее утро
 101,2026-09-29,9,3,total,2,Алия,1,1,morning,Утро
 101,2026-09-29,10,3,total,2,Алия,1,1,morning,Утро
@@ -703,7 +707,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 11,2026-09-29,4,2,total,3,Кутузовский,-1,1,deep_night,Глубокая ночь
 11,2026-09-29,5,2,total,4,Кутузовский,-2,2,deep_night,Глубокая ночь
 11,2026-09-29,6,2,total,5,Кутузовский,-3,3,opening,Открытие
-11,2026-09-29,7,0,total,3,Кутузовский,-3,3,opening,Открытие
+11,2026-09-29,7,2,total,3,Кутузовский,-1,1,opening,Открытие
 11,2026-09-29,22,1,total,3,Кутузовский,-2,2,late_evening,Поздний вечер
 11,2026-09-29,23,1,total,3,Кутузовский,-2,2,late_evening,Поздний вечер
 115,2026-09-29,7,1,total,3,Опен Символ,-2,2,opening,Открытие
@@ -751,7 +755,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 123,2026-09-29,20,1,total,1,Опен Нева,0,0,dinner,Ужин
 123,2026-09-29,21,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 123,2026-09-29,22,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
-123,2026-09-29,23,0,total,1,Опен Нева,-1,1,late_evening,Поздний вечер
+123,2026-09-29,23,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 125,2026-09-29,10,1,total,0,Meraki,1,1,morning,Утро
 125,2026-09-29,11,1,total,1,Meraki,0,0,lunch,Обед
 125,2026-09-29,12,1,total,1,Meraki,0,0,lunch,Обед
@@ -842,6 +846,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 142,2026-09-29,20,1,total,1,RED7,0,0,dinner,Ужин
 142,2026-09-29,21,1,total,1,RED7,0,0,late_evening,Поздний вечер
 142,2026-09-29,22,1,total,0,RED7,1,1,late_evening,Поздний вечер
+142,2026-09-29,23,1,total,0,RED7,1,1,late_evening,Поздний вечер
 16,2026-09-29,8,1,total,1,Мосфильм,0,0,early_morning,Раннее утро
 16,2026-09-29,9,1,total,1,Мосфильм,0,0,morning,Утро
 16,2026-09-29,10,1,total,2,Мосфильм,-1,1,morning,Утро
@@ -1053,6 +1058,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 35,2026-09-29,20,4,total,3,Ленинский,1,1,dinner,Ужин
 35,2026-09-29,21,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
 35,2026-09-29,22,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
+37,2026-09-29,7,1,total,0,БТ Усачева,1,1,opening,Открытие
 37,2026-09-29,8,1,total,0,БТ Усачева,1,1,early_morning,Раннее утро
 37,2026-09-29,9,1,total,0,БТ Усачева,1,1,morning,Утро
 37,2026-09-29,10,1,total,0,БТ Усачева,1,1,morning,Утро
@@ -1215,7 +1221,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 604,2026-09-29,21,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-09-29,22,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 69,2026-09-29,6,0,total,1,Опен Мичуринский,-1,1,opening,Открытие
-69,2026-09-29,7,0,total,7,Опен Мичуринский,-7,7,opening,Открытие
+69,2026-09-29,7,1,total,7,Опен Мичуринский,-6,6,opening,Открытие
 69,2026-09-29,8,6,total,7,Опен Мичуринский,-1,1,early_morning,Раннее утро
 69,2026-09-29,9,6,total,7,Опен Мичуринский,-1,1,morning,Утро
 69,2026-09-29,10,6,total,7,Опен Мичуринский,-1,1,morning,Утро
@@ -1255,7 +1261,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 7,2026-09-29,21,4,total,5,Белая Площадь,-1,1,late_evening,Поздний вечер
 7,2026-09-29,22,4,total,5,Белая Площадь,-1,1,late_evening,Поздний вечер
 7,2026-09-29,23,4,total,2,Белая Площадь,2,2,late_evening,Поздний вечер
-8,2026-09-29,7,0,total,3,Усачева,-3,3,opening,Открытие
+8,2026-09-29,7,1,total,3,Усачева,-2,2,opening,Открытие
 8,2026-09-29,8,3,total,4,Усачева,-1,1,early_morning,Раннее утро
 8,2026-09-29,9,3,total,4,Усачева,-1,1,morning,Утро
 8,2026-09-29,10,3,total,4,Усачева,-1,1,morning,Утро
@@ -1333,6 +1339,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 10,2026-09-30,20,1,total,1,Якиманка,0,0,dinner,Ужин
 10,2026-09-30,21,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
 10,2026-09-30,22,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
+10,2026-09-30,23,1,total,0,Якиманка,1,1,late_evening,Поздний вечер
 101,2026-09-30,8,2,total,1,Алия,1,1,early_morning,Раннее утро
 101,2026-09-30,9,2,total,2,Алия,0,0,morning,Утро
 101,2026-09-30,10,2,total,2,Алия,0,0,morning,Утро
@@ -1354,7 +1361,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 11,2026-09-30,4,3,total,0,Кутузовский,3,3,deep_night,Глубокая ночь
 11,2026-09-30,5,3,total,8,Кутузовский,-5,5,deep_night,Глубокая ночь
 11,2026-09-30,6,3,total,9,Кутузовский,-6,6,opening,Открытие
-11,2026-09-30,7,0,total,7,Кутузовский,-7,7,opening,Открытие
+11,2026-09-30,7,3,total,7,Кутузовский,-4,4,opening,Открытие
 11,2026-09-30,22,1,total,2,Кутузовский,-1,1,late_evening,Поздний вечер
 11,2026-09-30,23,1,total,5,Кутузовский,-4,4,late_evening,Поздний вечер
 115,2026-09-30,7,1,total,1,Опен Символ,0,0,opening,Открытие
@@ -1402,7 +1409,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 123,2026-09-30,20,1,total,1,Опен Нева,0,0,dinner,Ужин
 123,2026-09-30,21,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 123,2026-09-30,22,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
-123,2026-09-30,23,0,total,1,Опен Нева,-1,1,late_evening,Поздний вечер
+123,2026-09-30,23,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 125,2026-09-30,10,1,total,0,Meraki,1,1,morning,Утро
 125,2026-09-30,11,1,total,1,Meraki,0,0,lunch,Обед
 125,2026-09-30,12,1,total,1,Meraki,0,0,lunch,Обед
@@ -1493,6 +1500,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 142,2026-09-30,20,1,total,1,RED7,0,0,dinner,Ужин
 142,2026-09-30,21,1,total,1,RED7,0,0,late_evening,Поздний вечер
 142,2026-09-30,22,1,total,0,RED7,1,1,late_evening,Поздний вечер
+142,2026-09-30,23,1,total,0,RED7,1,1,late_evening,Поздний вечер
 16,2026-09-30,8,1,total,1,Мосфильм,0,0,early_morning,Раннее утро
 16,2026-09-30,9,1,total,1,Мосфильм,0,0,morning,Утро
 16,2026-09-30,10,1,total,2,Мосфильм,-1,1,morning,Утро
@@ -1674,7 +1682,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 34,2026-09-30,4,1,total,6,Аркус,-5,5,deep_night,Глубокая ночь
 34,2026-09-30,5,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-09-30,6,1,total,2,Аркус,-1,1,opening,Открытие
-34,2026-09-30,7,0,total,1,Аркус,-1,1,opening,Открытие
+34,2026-09-30,7,1,total,1,Аркус,0,0,opening,Открытие
 34,2026-09-30,22,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 34,2026-09-30,23,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 348,2026-09-30,8,1,total,1,Рига Холл,0,0,early_morning,Раннее утро
@@ -1705,6 +1713,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 35,2026-09-30,20,4,total,4,Ленинский,0,0,dinner,Ужин
 35,2026-09-30,21,1,total,3,Ленинский,-2,2,late_evening,Поздний вечер
 35,2026-09-30,22,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
+37,2026-09-30,7,1,total,0,БТ Усачева,1,1,opening,Открытие
 37,2026-09-30,8,1,total,0,БТ Усачева,1,1,early_morning,Раннее утро
 37,2026-09-30,9,1,total,0,БТ Усачева,1,1,morning,Утро
 37,2026-09-30,10,1,total,0,БТ Усачева,1,1,morning,Утро
@@ -1866,7 +1875,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 604,2026-09-30,20,1,total,1,Cihan Комсомольский,0,0,dinner,Ужин
 604,2026-09-30,21,1,total,1,Cihan Комсомольский,0,0,late_evening,Поздний вечер
 604,2026-09-30,22,1,total,1,Cihan Комсомольский,0,0,late_evening,Поздний вечер
-69,2026-09-30,7,0,total,6,Опен Мичуринский,-6,6,opening,Открытие
+69,2026-09-30,7,1,total,6,Опен Мичуринский,-5,5,opening,Открытие
 69,2026-09-30,8,6,total,7,Опен Мичуринский,-1,1,early_morning,Раннее утро
 69,2026-09-30,9,6,total,7,Опен Мичуринский,-1,1,morning,Утро
 69,2026-09-30,10,6,total,7,Опен Мичуринский,-1,1,morning,Утро
@@ -1906,7 +1915,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 7,2026-09-30,21,4,total,5,Белая Площадь,-1,1,late_evening,Поздний вечер
 7,2026-09-30,22,3,total,4,Белая Площадь,-1,1,late_evening,Поздний вечер
 7,2026-09-30,23,3,total,3,Белая Площадь,0,0,late_evening,Поздний вечер
-8,2026-09-30,7,0,total,3,Усачева,-3,3,opening,Открытие
+8,2026-09-30,7,1,total,3,Усачева,-2,2,opening,Открытие
 8,2026-09-30,8,3,total,3,Усачева,0,0,early_morning,Раннее утро
 8,2026-09-30,9,3,total,4,Усачева,-1,1,morning,Утро
 8,2026-09-30,10,3,total,4,Усачева,-1,1,morning,Утро
@@ -1984,6 +1993,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 10,2026-10-01,20,1,total,1,Якиманка,0,0,dinner,Ужин
 10,2026-10-01,21,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
 10,2026-10-01,22,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
+10,2026-10-01,23,1,total,0,Якиманка,1,1,late_evening,Поздний вечер
 101,2026-10-01,8,4,total,2,Алия,2,2,early_morning,Раннее утро
 101,2026-10-01,9,4,total,3,Алия,1,1,morning,Утро
 101,2026-10-01,10,4,total,3,Алия,1,1,morning,Утро
@@ -2004,8 +2014,8 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 11,2026-10-01,3,4,total,5,Кутузовский,-1,1,deep_night,Глубокая ночь
 11,2026-10-01,4,4,total,5,Кутузовский,-1,1,deep_night,Глубокая ночь
 11,2026-10-01,5,4,total,5,Кутузовский,-1,1,deep_night,Глубокая ночь
-11,2026-10-01,6,3,total,6,Кутузовский,-3,3,opening,Открытие
-11,2026-10-01,7,0,total,4,Кутузовский,-4,4,opening,Открытие
+11,2026-10-01,6,4,total,6,Кутузовский,-2,2,opening,Открытие
+11,2026-10-01,7,4,total,4,Кутузовский,0,0,opening,Открытие
 11,2026-10-01,22,1,total,4,Кутузовский,-3,3,late_evening,Поздний вечер
 11,2026-10-01,23,1,total,5,Кутузовский,-4,4,late_evening,Поздний вечер
 115,2026-10-01,7,1,total,1,Опен Символ,0,0,opening,Открытие
@@ -2053,7 +2063,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 123,2026-10-01,20,1,total,1,Опен Нева,0,0,dinner,Ужин
 123,2026-10-01,21,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 123,2026-10-01,22,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
-123,2026-10-01,23,0,total,1,Опен Нева,-1,1,late_evening,Поздний вечер
+123,2026-10-01,23,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 125,2026-10-01,10,1,total,0,Meraki,1,1,morning,Утро
 125,2026-10-01,11,1,total,1,Meraki,0,0,lunch,Обед
 125,2026-10-01,12,1,total,1,Meraki,0,0,lunch,Обед
@@ -2144,6 +2154,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 142,2026-10-01,20,1,total,1,RED7,0,0,dinner,Ужин
 142,2026-10-01,21,1,total,1,RED7,0,0,late_evening,Поздний вечер
 142,2026-10-01,22,1,total,0,RED7,1,1,late_evening,Поздний вечер
+142,2026-10-01,23,1,total,0,RED7,1,1,late_evening,Поздний вечер
 16,2026-10-01,8,1,total,1,Мосфильм,0,0,early_morning,Раннее утро
 16,2026-10-01,9,1,total,1,Мосфильм,0,0,morning,Утро
 16,2026-10-01,10,1,total,2,Мосфильм,-1,1,morning,Утро
@@ -2324,7 +2335,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 34,2026-10-01,4,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-01,5,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-01,6,1,total,1,Аркус,0,0,opening,Открытие
-34,2026-10-01,7,0,total,1,Аркус,-1,1,opening,Открытие
+34,2026-10-01,7,1,total,1,Аркус,0,0,opening,Открытие
 34,2026-10-01,22,1,total,2,Аркус,-1,1,late_evening,Поздний вечер
 34,2026-10-01,23,1,total,2,Аркус,-1,1,late_evening,Поздний вечер
 348,2026-10-01,8,1,total,1,Рига Холл,0,0,early_morning,Раннее утро
@@ -2355,7 +2366,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 35,2026-10-01,20,4,total,3,Ленинский,1,1,dinner,Ужин
 35,2026-10-01,21,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
 35,2026-10-01,22,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
-37,2026-10-01,7,0,total,2,БТ Усачева,-2,2,opening,Открытие
+37,2026-10-01,7,1,total,2,БТ Усачева,-1,1,opening,Открытие
 37,2026-10-01,8,1,total,2,БТ Усачева,-1,1,early_morning,Раннее утро
 37,2026-10-01,9,1,total,2,БТ Усачева,-1,1,morning,Утро
 37,2026-10-01,10,1,total,3,БТ Усачева,-2,2,morning,Утро
@@ -2518,7 +2529,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 604,2026-10-01,20,1,total,0,Cihan Комсомольский,1,1,dinner,Ужин
 604,2026-10-01,21,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-10-01,22,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
-69,2026-10-01,7,0,total,7,Опен Мичуринский,-7,7,opening,Открытие
+69,2026-10-01,7,1,total,7,Опен Мичуринский,-6,6,opening,Открытие
 69,2026-10-01,8,8,total,7,Опен Мичуринский,1,1,early_morning,Раннее утро
 69,2026-10-01,9,7,total,7,Опен Мичуринский,0,0,morning,Утро
 69,2026-10-01,10,7,total,7,Опен Мичуринский,0,0,morning,Утро
@@ -2558,7 +2569,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 7,2026-10-01,21,4,total,4,Белая Площадь,0,0,late_evening,Поздний вечер
 7,2026-10-01,22,3,total,3,Белая Площадь,0,0,late_evening,Поздний вечер
 7,2026-10-01,23,3,total,2,Белая Площадь,1,1,late_evening,Поздний вечер
-8,2026-10-01,7,0,total,2,Усачева,-2,2,opening,Открытие
+8,2026-10-01,7,1,total,2,Усачева,-1,1,opening,Открытие
 8,2026-10-01,8,3,total,2,Усачева,1,1,early_morning,Раннее утро
 8,2026-10-01,9,3,total,2,Усачева,1,1,morning,Утро
 8,2026-10-01,10,3,total,3,Усачева,0,0,morning,Утро
@@ -2637,6 +2648,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 10,2026-10-02,20,1,total,1,Якиманка,0,0,dinner,Ужин
 10,2026-10-02,21,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
 10,2026-10-02,22,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
+10,2026-10-02,23,1,total,0,Якиманка,1,1,late_evening,Поздний вечер
 101,2026-10-02,8,4,total,2,Алия,2,2,early_morning,Раннее утро
 101,2026-10-02,9,4,total,2,Алия,2,2,morning,Утро
 101,2026-10-02,10,4,total,2,Алия,2,2,morning,Утро
@@ -2659,7 +2671,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 11,2026-10-02,4,3,total,5,Кутузовский,-2,2,deep_night,Глубокая ночь
 11,2026-10-02,5,3,total,5,Кутузовский,-2,2,deep_night,Глубокая ночь
 11,2026-10-02,6,3,total,5,Кутузовский,-2,2,opening,Открытие
-11,2026-10-02,7,0,total,4,Кутузовский,-4,4,opening,Открытие
+11,2026-10-02,7,3,total,4,Кутузовский,-1,1,opening,Открытие
 11,2026-10-02,20,0,total,1,Кутузовский,-1,1,dinner,Ужин
 11,2026-10-02,21,0,total,1,Кутузовский,-1,1,late_evening,Поздний вечер
 11,2026-10-02,22,1,total,5,Кутузовский,-4,4,late_evening,Поздний вечер
@@ -2709,7 +2721,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 123,2026-10-02,20,1,total,1,Опен Нева,0,0,dinner,Ужин
 123,2026-10-02,21,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 123,2026-10-02,22,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
-123,2026-10-02,23,0,total,1,Опен Нева,-1,1,late_evening,Поздний вечер
+123,2026-10-02,23,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 125,2026-10-02,10,1,total,0,Meraki,1,1,morning,Утро
 125,2026-10-02,11,1,total,0,Meraki,1,1,lunch,Обед
 125,2026-10-02,12,1,total,0,Meraki,1,1,lunch,Обед
@@ -2800,6 +2812,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 142,2026-10-02,20,1,total,1,RED7,0,0,dinner,Ужин
 142,2026-10-02,21,1,total,1,RED7,0,0,late_evening,Поздний вечер
 142,2026-10-02,22,1,total,0,RED7,1,1,late_evening,Поздний вечер
+142,2026-10-02,23,1,total,0,RED7,1,1,late_evening,Поздний вечер
 16,2026-10-02,8,1,total,1,Мосфильм,0,0,early_morning,Раннее утро
 16,2026-10-02,9,1,total,1,Мосфильм,0,0,morning,Утро
 16,2026-10-02,10,1,total,2,Мосфильм,-1,1,morning,Утро
@@ -2981,7 +2994,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 34,2026-10-02,4,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-02,5,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-02,6,1,total,1,Аркус,0,0,opening,Открытие
-34,2026-10-02,7,0,total,1,Аркус,-1,1,opening,Открытие
+34,2026-10-02,7,1,total,1,Аркус,0,0,opening,Открытие
 34,2026-10-02,22,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 34,2026-10-02,23,1,total,2,Аркус,-1,1,late_evening,Поздний вечер
 348,2026-10-02,8,1,total,1,Рига Холл,0,0,early_morning,Раннее утро
@@ -3013,7 +3026,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 35,2026-10-02,20,4,total,2,Ленинский,2,2,dinner,Ужин
 35,2026-10-02,21,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
 35,2026-10-02,22,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
-37,2026-10-02,7,0,total,3,БТ Усачева,-3,3,opening,Открытие
+37,2026-10-02,7,1,total,3,БТ Усачева,-2,2,opening,Открытие
 37,2026-10-02,8,1,total,3,БТ Усачева,-2,2,early_morning,Раннее утро
 37,2026-10-02,9,1,total,4,БТ Усачева,-3,3,morning,Утро
 37,2026-10-02,10,1,total,4,БТ Усачева,-3,3,morning,Утро
@@ -3045,7 +3058,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 38,2026-10-02,20,1,total,1,Нева,0,0,dinner,Ужин
 38,2026-10-02,21,1,total,1,Нева,0,0,late_evening,Поздний вечер
 38,2026-10-02,22,1,total,1,Нева,0,0,late_evening,Поздний вечер
-38,2026-10-02,23,0,total,1,Нева,-1,1,late_evening,Поздний вечер
+38,2026-10-02,23,1,total,1,Нева,0,0,late_evening,Поздний вечер
 39,2026-10-02,8,4,total,4,Гребной,0,0,early_morning,Раннее утро
 39,2026-10-02,9,6,total,5,Гребной,1,1,morning,Утро
 39,2026-10-02,10,6,total,5,Гребной,1,1,morning,Утро
@@ -3177,7 +3190,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 604,2026-10-02,21,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-10-02,22,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-10-02,23,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
-69,2026-10-02,7,0,total,6,Опен Мичуринский,-6,6,opening,Открытие
+69,2026-10-02,7,1,total,6,Опен Мичуринский,-5,5,opening,Открытие
 69,2026-10-02,8,7,total,7,Опен Мичуринский,0,0,early_morning,Раннее утро
 69,2026-10-02,9,7,total,7,Опен Мичуринский,0,0,morning,Утро
 69,2026-10-02,10,7,total,7,Опен Мичуринский,0,0,morning,Утро
@@ -3217,7 +3230,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 7,2026-10-02,21,5,total,3,Белая Площадь,2,2,late_evening,Поздний вечер
 7,2026-10-02,22,4,total,2,Белая Площадь,2,2,late_evening,Поздний вечер
 7,2026-10-02,23,4,total,1,Белая Площадь,3,3,late_evening,Поздний вечер
-8,2026-10-02,7,0,total,3,Усачева,-3,3,opening,Открытие
+8,2026-10-02,7,1,total,3,Усачева,-2,2,opening,Открытие
 8,2026-10-02,8,4,total,3,Усачева,1,1,early_morning,Раннее утро
 8,2026-10-02,9,4,total,4,Усачева,0,0,morning,Утро
 8,2026-10-02,10,4,total,4,Усачева,0,0,morning,Утро
@@ -3295,6 +3308,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 10,2026-10-03,20,1,total,1,Якиманка,0,0,dinner,Ужин
 10,2026-10-03,21,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
 10,2026-10-03,22,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
+10,2026-10-03,23,1,total,0,Якиманка,1,1,late_evening,Поздний вечер
 101,2026-10-03,8,3,total,2,Алия,1,1,early_morning,Раннее утро
 101,2026-10-03,9,3,total,2,Алия,1,1,morning,Утро
 101,2026-10-03,10,3,total,2,Алия,1,1,morning,Утро
@@ -3316,8 +3330,8 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 11,2026-10-03,3,3,total,5,Кутузовский,-2,2,deep_night,Глубокая ночь
 11,2026-10-03,4,3,total,5,Кутузовский,-2,2,deep_night,Глубокая ночь
 11,2026-10-03,5,3,total,5,Кутузовский,-2,2,deep_night,Глубокая ночь
-11,2026-10-03,6,2,total,5,Кутузовский,-3,3,opening,Открытие
-11,2026-10-03,7,0,total,4,Кутузовский,-4,4,opening,Открытие
+11,2026-10-03,6,3,total,5,Кутузовский,-2,2,opening,Открытие
+11,2026-10-03,7,3,total,4,Кутузовский,-1,1,opening,Открытие
 11,2026-10-03,22,1,total,3,Кутузовский,-2,2,late_evening,Поздний вечер
 11,2026-10-03,23,1,total,3,Кутузовский,-2,2,late_evening,Поздний вечер
 115,2026-10-03,7,1,total,1,Опен Символ,0,0,opening,Открытие
@@ -3364,7 +3378,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 123,2026-10-03,20,1,total,1,Опен Нева,0,0,dinner,Ужин
 123,2026-10-03,21,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 123,2026-10-03,22,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
-123,2026-10-03,23,0,total,1,Опен Нева,-1,1,late_evening,Поздний вечер
+123,2026-10-03,23,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 125,2026-10-03,10,1,total,0,Meraki,1,1,morning,Утро
 125,2026-10-03,11,1,total,1,Meraki,0,0,lunch,Обед
 125,2026-10-03,12,1,total,1,Meraki,0,0,lunch,Обед
@@ -3455,6 +3469,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 142,2026-10-03,20,1,total,1,RED7,0,0,dinner,Ужин
 142,2026-10-03,21,1,total,1,RED7,0,0,late_evening,Поздний вечер
 142,2026-10-03,22,1,total,0,RED7,1,1,late_evening,Поздний вечер
+142,2026-10-03,23,1,total,0,RED7,1,1,late_evening,Поздний вечер
 16,2026-10-03,8,1,total,1,Мосфильм,0,0,early_morning,Раннее утро
 16,2026-10-03,9,1,total,1,Мосфильм,0,0,morning,Утро
 16,2026-10-03,10,1,total,2,Мосфильм,-1,1,morning,Утро
@@ -3634,7 +3649,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 34,2026-10-03,4,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-03,5,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-03,6,1,total,1,Аркус,0,0,opening,Открытие
-34,2026-10-03,7,0,total,1,Аркус,-1,1,opening,Открытие
+34,2026-10-03,7,1,total,1,Аркус,0,0,opening,Открытие
 34,2026-10-03,22,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 34,2026-10-03,23,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 348,2026-10-03,8,1,total,1,Рига Холл,0,0,early_morning,Раннее утро
@@ -3666,7 +3681,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 35,2026-10-03,20,3,total,3,Ленинский,0,0,dinner,Ужин
 35,2026-10-03,21,1,total,2,Ленинский,-1,1,late_evening,Поздний вечер
 35,2026-10-03,22,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
-37,2026-10-03,7,0,total,3,БТ Усачева,-3,3,opening,Открытие
+37,2026-10-03,7,1,total,3,БТ Усачева,-2,2,opening,Открытие
 37,2026-10-03,8,1,total,3,БТ Усачева,-2,2,early_morning,Раннее утро
 37,2026-10-03,9,1,total,4,БТ Усачева,-3,3,morning,Утро
 37,2026-10-03,10,1,total,4,БТ Усачева,-3,3,morning,Утро
@@ -3698,7 +3713,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 38,2026-10-03,20,1,total,1,Нева,0,0,dinner,Ужин
 38,2026-10-03,21,1,total,1,Нева,0,0,late_evening,Поздний вечер
 38,2026-10-03,22,1,total,1,Нева,0,0,late_evening,Поздний вечер
-38,2026-10-03,23,0,total,1,Нева,-1,1,late_evening,Поздний вечер
+38,2026-10-03,23,1,total,1,Нева,0,0,late_evening,Поздний вечер
 39,2026-10-03,8,4,total,5,Гребной,-1,1,early_morning,Раннее утро
 39,2026-10-03,9,6,total,5,Гребной,1,1,morning,Утро
 39,2026-10-03,10,6,total,6,Гребной,0,0,morning,Утро
@@ -3830,7 +3845,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 604,2026-10-03,21,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-10-03,22,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-10-03,23,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
-69,2026-10-03,7,0,total,5,Опен Мичуринский,-5,5,opening,Открытие
+69,2026-10-03,7,1,total,5,Опен Мичуринский,-4,4,opening,Открытие
 69,2026-10-03,8,8,total,7,Опен Мичуринский,1,1,early_morning,Раннее утро
 69,2026-10-03,9,8,total,6,Опен Мичуринский,2,2,morning,Утро
 69,2026-10-03,10,8,total,7,Опен Мичуринский,1,1,morning,Утро
@@ -3870,7 +3885,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 7,2026-10-03,21,3,total,5,Белая Площадь,-2,2,late_evening,Поздний вечер
 7,2026-10-03,22,3,total,5,Белая Площадь,-2,2,late_evening,Поздний вечер
 7,2026-10-03,23,3,total,3,Белая Площадь,0,0,late_evening,Поздний вечер
-8,2026-10-03,7,0,total,3,Усачева,-3,3,opening,Открытие
+8,2026-10-03,7,1,total,3,Усачева,-2,2,opening,Открытие
 8,2026-10-03,8,4,total,3,Усачева,1,1,early_morning,Раннее утро
 8,2026-10-03,9,4,total,4,Усачева,0,0,morning,Утро
 8,2026-10-03,10,4,total,4,Усачева,0,0,morning,Утро
@@ -3949,6 +3964,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 10,2026-10-04,20,1,total,1,Якиманка,0,0,dinner,Ужин
 10,2026-10-04,21,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
 10,2026-10-04,22,1,total,1,Якиманка,0,0,late_evening,Поздний вечер
+10,2026-10-04,23,1,total,0,Якиманка,1,1,late_evening,Поздний вечер
 101,2026-10-04,8,4,total,1,Алия,3,3,early_morning,Раннее утро
 101,2026-10-04,9,4,total,2,Алия,2,2,morning,Утро
 101,2026-10-04,10,4,total,2,Алия,2,2,morning,Утро
@@ -3969,8 +3985,9 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 11,2026-10-04,3,3,total,4,Кутузовский,-1,1,deep_night,Глубокая ночь
 11,2026-10-04,4,3,total,4,Кутузовский,-1,1,deep_night,Глубокая ночь
 11,2026-10-04,5,3,total,4,Кутузовский,-1,1,deep_night,Глубокая ночь
-11,2026-10-04,6,2,total,4,Кутузовский,-2,2,opening,Открытие
-11,2026-10-04,7,0,total,4,Кутузовский,-4,4,opening,Открытие
+11,2026-10-04,6,3,total,4,Кутузовский,-1,1,opening,Открытие
+11,2026-10-04,7,3,total,4,Кутузовский,-1,1,opening,Открытие
+11,2026-10-04,8,2,total,0,Кутузовский,2,2,early_morning,Раннее утро
 11,2026-10-04,22,1,total,2,Кутузовский,-1,1,late_evening,Поздний вечер
 11,2026-10-04,23,1,total,4,Кутузовский,-3,3,late_evening,Поздний вечер
 115,2026-10-04,7,1,total,1,Опен Символ,0,0,opening,Открытие
@@ -4017,7 +4034,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 123,2026-10-04,20,1,total,1,Опен Нева,0,0,dinner,Ужин
 123,2026-10-04,21,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 123,2026-10-04,22,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
-123,2026-10-04,23,0,total,1,Опен Нева,-1,1,late_evening,Поздний вечер
+123,2026-10-04,23,1,total,1,Опен Нева,0,0,late_evening,Поздний вечер
 125,2026-10-04,10,1,total,0,Meraki,1,1,morning,Утро
 125,2026-10-04,11,1,total,1,Meraki,0,0,lunch,Обед
 125,2026-10-04,12,1,total,1,Meraki,0,0,lunch,Обед
@@ -4108,6 +4125,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 142,2026-10-04,20,1,total,1,RED7,0,0,dinner,Ужин
 142,2026-10-04,21,1,total,1,RED7,0,0,late_evening,Поздний вечер
 142,2026-10-04,22,1,total,0,RED7,1,1,late_evening,Поздний вечер
+142,2026-10-04,23,1,total,0,RED7,1,1,late_evening,Поздний вечер
 16,2026-10-04,8,1,total,1,Мосфильм,0,0,early_morning,Раннее утро
 16,2026-10-04,9,1,total,1,Мосфильм,0,0,morning,Утро
 16,2026-10-04,10,1,total,2,Мосфильм,-1,1,morning,Утро
@@ -4287,7 +4305,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 34,2026-10-04,4,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-04,5,1,total,1,Аркус,0,0,deep_night,Глубокая ночь
 34,2026-10-04,6,1,total,1,Аркус,0,0,opening,Открытие
-34,2026-10-04,7,0,total,1,Аркус,-1,1,opening,Открытие
+34,2026-10-04,7,1,total,1,Аркус,0,0,opening,Открытие
 34,2026-10-04,22,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 34,2026-10-04,23,1,total,1,Аркус,0,0,late_evening,Поздний вечер
 348,2026-10-04,8,1,total,1,Рига Холл,0,0,early_morning,Раннее утро
@@ -4318,7 +4336,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 35,2026-10-04,20,4,total,2,Ленинский,2,2,dinner,Ужин
 35,2026-10-04,21,1,total,2,Ленинский,-1,1,late_evening,Поздний вечер
 35,2026-10-04,22,1,total,1,Ленинский,0,0,late_evening,Поздний вечер
-37,2026-10-04,7,0,total,3,БТ Усачева,-3,3,opening,Открытие
+37,2026-10-04,7,1,total,3,БТ Усачева,-2,2,opening,Открытие
 37,2026-10-04,8,1,total,3,БТ Усачева,-2,2,early_morning,Раннее утро
 37,2026-10-04,9,1,total,4,БТ Усачева,-3,3,morning,Утро
 37,2026-10-04,10,1,total,4,БТ Усачева,-3,3,morning,Утро
@@ -4350,7 +4368,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 38,2026-10-04,20,1,total,1,Нева,0,0,dinner,Ужин
 38,2026-10-04,21,1,total,1,Нева,0,0,late_evening,Поздний вечер
 38,2026-10-04,22,1,total,1,Нева,0,0,late_evening,Поздний вечер
-38,2026-10-04,23,0,total,1,Нева,-1,1,late_evening,Поздний вечер
+38,2026-10-04,23,1,total,1,Нева,0,0,late_evening,Поздний вечер
 39,2026-10-04,8,4,total,5,Гребной,-1,1,early_morning,Раннее утро
 39,2026-10-04,9,6,total,6,Гребной,0,0,morning,Утро
 39,2026-10-04,10,6,total,6,Гребной,0,0,morning,Утро
@@ -4479,7 +4497,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 604,2026-10-04,20,1,total,0,Cihan Комсомольский,1,1,dinner,Ужин
 604,2026-10-04,21,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
 604,2026-10-04,22,1,total,0,Cihan Комсомольский,1,1,late_evening,Поздний вечер
-69,2026-10-04,7,0,total,5,Опен Мичуринский,-5,5,opening,Открытие
+69,2026-10-04,7,1,total,5,Опен Мичуринский,-4,4,opening,Открытие
 69,2026-10-04,8,10,total,6,Опен Мичуринский,4,4,early_morning,Раннее утро
 69,2026-10-04,9,9,total,6,Опен Мичуринский,3,3,morning,Утро
 69,2026-10-04,10,9,total,6,Опен Мичуринский,3,3,morning,Утро
@@ -4519,7 +4537,7 @@ location_id,date,hour,forecast_couriers,vehicle_type,actual_couriers,location_na
 7,2026-10-04,21,4,total,3,Белая Площадь,1,1,late_evening,Поздний вечер
 7,2026-10-04,22,4,total,2,Белая Площадь,2,2,late_evening,Поздний вечер
 7,2026-10-04,23,4,total,2,Белая Площадь,2,2,late_evening,Поздний вечер
-8,2026-10-04,7,0,total,3,Усачева,-3,3,opening,Открытие
+8,2026-10-04,7,1,total,3,Усачева,-2,2,opening,Открытие
 8,2026-10-04,8,4,total,3,Усачева,1,1,early_morning,Раннее утро
 8,2026-10-04,9,4,total,4,Усачева,0,0,morning,Утро
 8,2026-10-04,10,4,total,4,Усачева,0,0,morning,Утро

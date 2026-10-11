@@ -253,6 +253,63 @@ class BusinessReportTests(unittest.TestCase):
         self.assertTrue(accepted)
         self.assertTrue(comparison["candidate_accepted"].all())
 
+    def test_half_hour_opening_keeps_hour_for_demand_and_clips_shift(self):
+        exact = {("1", 0): [(7.5, 24.0)]}
+        snapped = business_reports.snap_work_interval_lookup(exact)
+        self.assertEqual(snapped[("1", 0)], [(7.0, 24.0)])
+
+        hourly = pd.DataFrame(
+            [
+                {
+                    "location_id": "1",
+                    "date": "2026-07-20",
+                    "hour": hour,
+                    "segment": "medium",
+                    "vehicle_type": "bike",
+                    "slots_needed": 1 if 7 <= hour < 12 else 0,
+                    "predicted_orders": 1.0 if 7 <= hour < 12 else 0.0,
+                    "predicted_earning_pool_rub": 300.0 if 7 <= hour < 12 else 0.0,
+                }
+                for hour in range(6, 24)
+            ]
+        )
+        plan = business_reports.build_business_shift_plan(
+            hourly, snapped, {}, exact
+        )
+        self.assertEqual(plan.iloc[0]["shift_start"], "07:30")
+        self.assertEqual(plan.iloc[0]["shift_finish"], "12:00")
+        self.assertAlmostEqual(plan.iloc[0]["shift_hours"], 4.5)
+        self.assertEqual(plan.iloc[0]["open_intervals"], "07:30-24:00")
+
+    def test_short_partial_opening_hour_is_not_kept(self):
+        start, finish = business_reports.snap_interval_to_planning_hours(7.75, 22.0)
+        self.assertEqual((start, finish), (8.0, 22.0))
+        start, finish = business_reports.snap_interval_to_planning_hours(8.0, 22.5)
+        self.assertEqual((start, finish), (8.0, 23.0))
+
+    def test_window_is_extended_only_by_reliable_courier_presence(self):
+        lookup = {("1", 0): [(8.0, 23.0)], ("2", 0): []}
+        presence = pd.DataFrame(
+            [
+                # reliable: couriers on 3 of 4 Mondays at 07:00
+                {"location_id": "1", "weekday": 0, "hour": 7, "days_present": 3, "days_total": 4, "day_share": 0.75},
+                # not reliable: a single Monday
+                {"location_id": "1", "weekday": 0, "hour": 6, "days_present": 1, "days_total": 4, "day_share": 0.25},
+                # already inside the declared window
+                {"location_id": "1", "weekday": 0, "hour": 10, "days_present": 4, "days_total": 4, "day_share": 1.0},
+                # no declared window (unrestricted) -> must stay untouched
+                {"location_id": "2", "weekday": 0, "hour": 7, "days_present": 4, "days_total": 4, "day_share": 1.0},
+            ]
+        )
+        extended, audit = (
+            business_reports.extend_work_interval_lookup_with_courier_presence(
+                lookup, presence, min_day_share=0.5
+            )
+        )
+        self.assertEqual(extended[("1", 0)], [(7.0, 23.0)])
+        self.assertEqual(extended[("2", 0)], [])
+        self.assertEqual(audit["added_hour"].tolist(), [7])
+
 
 if __name__ == "__main__":
     unittest.main()

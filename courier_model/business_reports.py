@@ -72,6 +72,25 @@ MINIMIZE_SHIFT_OVERCOVERAGE = (
 CALIBRATION_VEHICLE_WORSEN_TOLERANCE = float(
     os.getenv("CALIBRATION_VEHICLE_WORSEN_TOLERANCE", "0.05")
 )
+# Planning works on whole hours. A work window that starts/ends inside an hour
+# (e.g. 07:30) still gets demand for that hour when the restaurant is open at
+# least this share of the hour; the courier shift itself is clipped back to the
+# exact opening/closing time afterwards.
+PARTIAL_HOUR_MIN_OVERLAP = float(os.getenv("PARTIAL_HOUR_MIN_OVERLAP", "0.5"))
+# Extend the declared work window with hours where couriers were really
+# scheduled on most same-weekday dates of the last weeks.
+EXTEND_WINDOW_BY_COURIER_PRESENCE = (
+    os.getenv("EXTEND_WINDOW_BY_COURIER_PRESENCE", "1") == "1"
+)
+WINDOW_PRESENCE_LOOKBACK_DAYS = int(
+    os.getenv("WINDOW_PRESENCE_LOOKBACK_DAYS", "28")
+)
+WINDOW_PRESENCE_MIN_DAY_SHARE = float(
+    os.getenv("WINDOW_PRESENCE_MIN_DAY_SHARE", "0.5")
+)
+WINDOW_PRESENCE_MIN_HOUR_OVERLAP = float(
+    os.getenv("WINDOW_PRESENCE_MIN_HOUR_OVERLAP", "0.5")
+)
 KFM_ORGANIZATION_IDS = {
     "5",
     "3",
@@ -614,6 +633,234 @@ def build_work_interval_lookup(work_hours_df):
             finish_hour,
         )
     return lookup
+
+
+def shift_time_to_hour(value, round_up=False):
+    """"07:30" -> 7 (shift start) or 8 (shift finish: hour 07 is still covered)."""
+    text_value = str(value)
+    hour_text, _, minute_text = text_value.partition(":")
+    hour = int(hour_text)
+    minute = int(minute_text) if minute_text.strip().isdigit() else 0
+    return hour + 1 if round_up and minute > 0 else hour
+
+
+def snap_interval_to_planning_hours(start, finish, min_overlap=None):
+    """Round a window to whole hours, keeping partially open edge hours.
+
+    07:30-24:00 -> 07:00-24:00 (hour 07 is open for 0.5h >= min_overlap)
+    22:00-22:30 -> hour 22 is kept as well.
+    """
+    min_overlap = PARTIAL_HOUR_MIN_OVERLAP if min_overlap is None else min_overlap
+    first_hour = float(np.floor(start))
+    first_overlap = first_hour + 1.0 - float(start)
+    snapped_start = (
+        first_hour if first_overlap >= min_overlap - 1e-9 else first_hour + 1.0
+    )
+    last_hour = float(np.floor(finish))
+    last_overlap = float(finish) - last_hour
+    if last_overlap <= 1e-9:
+        snapped_finish = float(finish)
+    elif last_overlap >= min_overlap - 1e-9:
+        snapped_finish = last_hour + 1.0
+    else:
+        snapped_finish = last_hour
+    return snapped_start, snapped_finish
+
+
+def snap_work_interval_lookup(work_interval_lookup):
+    """Whole-hour version of the exact work-window lookup used for planning."""
+    snapped_lookup = {}
+    for key, intervals in work_interval_lookup.items():
+        snapped = []
+        for start, finish in intervals:
+            snapped_start, snapped_finish = snap_interval_to_planning_hours(
+                start, finish
+            )
+            if snapped_finish > snapped_start:
+                snapped.append((snapped_start, snapped_finish))
+        # Never turn a restricted window into "no restriction" (empty list).
+        snapped_lookup[key] = _merge_intervals(snapped) if snapped else list(intervals)
+    return snapped_lookup
+
+
+def load_courier_presence_by_hour(
+    forecast_start,
+    location_to_planning,
+    lookback_days=None,
+    min_hour_overlap=None,
+):
+    """Share of same-weekday dates on which couriers were scheduled in each hour.
+
+    Uses only history before ``forecast_start``. Returns one row per
+    (planning location, weekday, hour) with ``day_share`` in [0, 1].
+    """
+    lookback_days = (
+        WINDOW_PRESENCE_LOOKBACK_DAYS if lookback_days is None else lookback_days
+    )
+    min_hour_overlap = (
+        WINDOW_PRESENCE_MIN_HOUR_OVERLAP
+        if min_hour_overlap is None
+        else min_hour_overlap
+    )
+    columns = ["location_id", "weekday", "hour", "days_present", "days_total", "day_share"]
+    finish = pd.Timestamp(forecast_start)
+    if finish.tzinfo is None:
+        finish = finish.tz_localize("Europe/Moscow")
+    finish = finish.tz_convert("Europe/Moscow").normalize()
+    start = finish - pd.Timedelta(days=lookback_days)
+
+    engine = cm.build_engine()
+    schedule_df = cm.load_schedule_history(
+        engine,
+        cm.datetime_to_ms(start),
+        cm.datetime_to_ms(finish),
+    )
+    schedule_df = cm.prepare_schedule_history(schedule_df, location_to_planning)
+    if schedule_df.empty:
+        return pd.DataFrame(columns=columns)
+
+    present = set()
+    for row in schedule_df.itertuples(index=False):
+        shift_start = max(row.schedule_start_dt, start)
+        shift_finish = min(row.schedule_finish_dt, finish)
+        if shift_finish <= shift_start:
+            continue
+        location_id = str(getattr(row, cm.LOCATION_COLUMN))
+        hour_cursor = shift_start.floor("h")
+        while hour_cursor < shift_finish:
+            hour_end = hour_cursor + pd.Timedelta(hours=1)
+            overlap = (
+                min(shift_finish, hour_end) - max(shift_start, hour_cursor)
+            ).total_seconds() / 3600.0
+            if overlap >= min_hour_overlap - 1e-9:
+                present.add(
+                    (location_id, hour_cursor.date(), int(hour_cursor.hour))
+                )
+            hour_cursor = hour_end
+    if not present:
+        return pd.DataFrame(columns=columns)
+
+    presence = pd.DataFrame(
+        list(present), columns=["location_id", "date", "hour"]
+    )
+    presence["weekday"] = pd.to_datetime(presence["date"]).dt.dayofweek
+    days_present = (
+        presence.groupby(["location_id", "weekday", "hour"])["date"]
+        .nunique()
+        .reset_index(name="days_present")
+    )
+    all_dates = pd.date_range(start.tz_localize(None), finish.tz_localize(None), inclusive="left")
+    days_total = (
+        pd.Series(all_dates.dayofweek).value_counts().rename_axis("weekday").reset_index(name="days_total")
+    )
+    result = days_present.merge(days_total, on="weekday", how="left")
+    result["day_share"] = result["days_present"] / result["days_total"].clip(lower=1)
+    return result[columns]
+
+
+def extend_work_interval_lookup_with_courier_presence(
+    work_interval_lookup,
+    presence_df,
+    min_day_share=None,
+):
+    """Union the declared work window with hours that couriers reliably worked.
+
+    Only locations that already have a declared window are extended, so a
+    missing window (== unrestricted) never becomes restricted by accident.
+    Returns (extended_lookup, audit_dataframe).
+    """
+    min_day_share = (
+        WINDOW_PRESENCE_MIN_DAY_SHARE if min_day_share is None else min_day_share
+    )
+    audit_columns = [
+        "location_id",
+        "weekday",
+        "added_hour",
+        "days_present",
+        "days_total",
+        "day_share",
+        "declared_window",
+        "extended_window",
+    ]
+    extended = {key: list(intervals) for key, intervals in work_interval_lookup.items()}
+    if presence_df is None or presence_df.empty:
+        return extended, pd.DataFrame(columns=audit_columns)
+
+    audit_rows = []
+    reliable = presence_df[presence_df["day_share"] >= min_day_share - 1e-9]
+    for (location_id, weekday), group in reliable.groupby(["location_id", "weekday"]):
+        key = (str(location_id), int(weekday))
+        declared = extended.get(key)
+        if not declared:
+            continue
+        added = []
+        for row in group.sort_values("hour").itertuples(index=False):
+            hour = int(row.hour)
+            if hour_is_inside_open_intervals(hour, snap_intervals(declared)):
+                continue
+            added.append(row)
+        if not added:
+            continue
+        new_intervals = _merge_intervals(
+            list(declared) + [(float(row.hour), float(row.hour) + 1.0) for row in added]
+        )
+        extended[key] = new_intervals
+        for row in added:
+            audit_rows.append(
+                {
+                    "location_id": key[0],
+                    "weekday": key[1],
+                    "added_hour": int(row.hour),
+                    "days_present": int(row.days_present),
+                    "days_total": int(row.days_total),
+                    "day_share": round(float(row.day_share), 3),
+                    "declared_window": format_intervals(declared),
+                    "extended_window": format_intervals(new_intervals),
+                }
+            )
+    return extended, pd.DataFrame(audit_rows, columns=audit_columns)
+
+
+def snap_intervals(intervals):
+    snapped = []
+    for start, finish in intervals:
+        snapped_start, snapped_finish = snap_interval_to_planning_hours(start, finish)
+        if snapped_finish > snapped_start:
+            snapped.append((snapped_start, snapped_finish))
+    return snapped or list(intervals)
+
+
+def clip_shift_rows_to_exact_window(rows, exact_intervals):
+    """Start/finish shifts at the exact opening/closing time (e.g. 07:30).
+
+    Planning rounds a 07:30 opening down to hour 07 so the hour gets demand;
+    here the courier shift is moved back to 07:30. ``exact_intervals`` is the
+    non-rounded work window for this location/day.
+    """
+    if not exact_intervals:
+        return rows
+    open_intervals_label = format_intervals(exact_intervals)
+    clipped_rows = []
+    for row in rows:
+        updated = dict(row)
+        updated["open_intervals"] = open_intervals_label
+        start_hour = int(str(row["shift_start"]).split(":")[0])
+        finish_hour = int(str(row["shift_finish"]).split(":")[0])
+        new_start = float(start_hour)
+        new_finish = float(finish_hour)
+        for interval_start, interval_finish in exact_intervals:
+            if start_hour < interval_start < start_hour + 1:
+                new_start = max(new_start, float(interval_start))
+            if finish_hour - 1 < interval_finish < finish_hour:
+                new_finish = min(new_finish, float(interval_finish))
+        if new_finish > new_start and (
+            new_start != float(start_hour) or new_finish != float(finish_hour)
+        ):
+            updated["shift_start"] = _format_hour_value(new_start)
+            updated["shift_finish"] = _format_hour_value(new_finish)
+            updated["shift_hours"] = round(new_finish - new_start, 2)
+        clipped_rows.append(updated)
+    return clipped_rows
 
 
 def get_open_intervals(location_id, weekday, work_interval_lookup, group_to_members):
@@ -1889,7 +2136,17 @@ def build_layered_shift_plan_for_group(
     return rows
 
 
-def build_business_shift_plan(hourly_df, work_interval_lookup, group_to_members):
+def build_business_shift_plan(
+    hourly_df,
+    work_interval_lookup,
+    group_to_members,
+    exact_interval_lookup=None,
+):
+    """Build shifts on whole-hour windows (``work_interval_lookup``).
+
+    ``exact_interval_lookup`` keeps the real opening/closing minutes; when
+    given, shifts that touch a half-hour edge are clipped to it (07:30).
+    """
     rows = []
     if hourly_df.empty:
         return pd.DataFrame()
@@ -1897,21 +2154,31 @@ def build_business_shift_plan(hourly_df, work_interval_lookup, group_to_members)
     group_cols = ["location_id", "date", "segment", "vehicle_type"]
     for key, group in hourly_df.groupby(group_cols):
         location_id, date, segment, vehicle_type = key
-        rows.extend(
-            build_shift_plan_for_group(
+        weekday = pd.Timestamp(date).dayofweek
+        group_rows = build_shift_plan_for_group(
+            location_id,
+            date,
+            segment,
+            vehicle_type,
+            group,
+            get_open_intervals(
                 location_id,
-                date,
-                segment,
-                vehicle_type,
-                group,
+                weekday,
+                work_interval_lookup,
+                group_to_members,
+            ),
+        )
+        if exact_interval_lookup is not None:
+            group_rows = clip_shift_rows_to_exact_window(
+                group_rows,
                 get_open_intervals(
                     location_id,
-                    pd.Timestamp(date).dayofweek,
-                    work_interval_lookup,
+                    weekday,
+                    exact_interval_lookup,
                     group_to_members,
                 ),
             )
-        )
+        rows.extend(group_rows)
 
     if not rows:
         return pd.DataFrame()
@@ -1995,8 +2262,8 @@ def attach_shift_delivery_p70(shift_plan, hourly_df):
     for row in shift_plan.itertuples(index=False):
         key = tuple(getattr(row, column) for column in group_columns)
         hourly = hourly_groups.get(key)
-        start = int(str(row.shift_start).split(":")[0])
-        finish = int(str(row.shift_finish).split(":")[0])
+        start = shift_time_to_hour(row.shift_start)
+        finish = shift_time_to_hour(row.shift_finish, round_up=True)
         weighted_minutes = 0.0
         order_weight = 0.0
         sources = []
@@ -2147,11 +2414,11 @@ def build_control_week_validation(
         )
         coverage = np.zeros(24, dtype=int)
         for row in shifts_by_group.get(key, pd.DataFrame()).itertuples(index=False):
-            start = int(str(row.shift_start).split(":")[0])
-            finish = int(str(row.shift_finish).split(":")[0])
+            start = shift_time_to_hour(row.shift_start)
+            finish = shift_time_to_hour(row.shift_finish, round_up=True)
             coverage[start:finish] += int(row.slots_to_create)
             planned_courier_hours += (
-                finish - start
+                float(row.shift_hours)
             ) * int(row.slots_to_create)
         for row in group.itertuples(index=False):
             required = (
@@ -2685,10 +2952,26 @@ def main():
             )
     business_group_map = build_business_group_map(forecast_df, locations_df)
     work_hours_df = load_work_hours()
-    work_interval_lookup = build_work_interval_lookup(work_hours_df)
+    declared_interval_lookup = build_work_interval_lookup(work_hours_df)
+    exact_interval_lookup = declared_interval_lookup
+    window_extension_audit = pd.DataFrame()
+    if EXTEND_WINDOW_BY_COURIER_PRESENCE:
+        courier_presence = load_courier_presence_by_hour(
+            forecast_df["segment_datetime"].min(),
+            partner_grouping.location_to_planning,
+        )
+        exact_interval_lookup, window_extension_audit = (
+            extend_work_interval_lookup_with_courier_presence(
+                declared_interval_lookup,
+                courier_presence,
+            )
+        )
+    # Planning uses whole hours (07:30 opening keeps hour 07); shifts are
+    # clipped back to the exact window afterwards.
+    work_interval_lookup = snap_work_interval_lookup(exact_interval_lookup)
     work_window_report = build_work_window_report(
         forecast_df,
-        work_interval_lookup,
+        exact_interval_lookup,
         group_to_members,
     )
     payment_rows, payment_metadata = load_orders_payment_report(
@@ -2720,6 +3003,7 @@ def main():
         hourly_df,
         work_interval_lookup,
         group_to_members,
+        exact_interval_lookup,
     )
     if candidate_shift_plan.empty:
         raise RuntimeError("No business shift rows were generated.")
@@ -2746,6 +3030,7 @@ def main():
                 baseline_hourly,
                 work_interval_lookup,
                 group_to_members,
+                exact_interval_lookup,
             )
         finally:
             MINIMIZE_SHIFT_OVERCOVERAGE = previous_minimize
@@ -2784,6 +3069,7 @@ def main():
     )
     reports["shift_earnings_audit"] = build_shift_earnings_audit(shift_plan)
     reports["payment_input_quality_audit"] = payment_quality_audit
+    reports["work_window_extension_audit"] = window_extension_audit
     reports["courier_hour_calibration_comparison"] = calibration_comparison
     reports["control_week_validation"] = build_control_week_validation(
         hourly_df,
