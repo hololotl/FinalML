@@ -1,0 +1,24 @@
+metric,value
+rows,2726
+history_start,2026-10-05 00:00:00+03:00
+history_finish,2026-10-19 00:00:00+03:00
+orders_prediction_sum,16112.32057890386
+auto_order_prediction_sum,8228.37951636736
+bike_order_prediction_sum,7883.9410625365
+auto_slots_needed_sum,2147
+bike_slots_needed_sum,1203
+total_slots_needed_sum,3350
+suppress_slots_without_recent_schedule,True
+minimum_base_courier_for_active_locations,True
+history_lookback_days,14
+locations_with_recent_schedule,40
+locations_slots_suppressed,66
+safety_buffer,1.15
+calibrated_safety_buffer,1.0
+joint_daily_rounding,True
+slot_capacity_multiplier,1.3
+slot_rounding_mode,combined
+cycle_time_percentile,p80_minutes
+cycle_time_return_multiplier,2.0
+default_auto_orders_per_slot_per_hour,1.5
+default_bike_orders_per_slot_per_hour,1.0

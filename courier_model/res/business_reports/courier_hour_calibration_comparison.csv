@@ -1,7 +1,7 @@
 model,vehicle_type,planned_courier_hours,actual_courier_hours,absolute_error_hours,courier_hour_ape,candidate_accepted,decision_reason
-baseline,auto,7732.0,5767.0,1965.0,0.34073174960984914,True,improved_holdout_without_coverage_loss
-baseline,bike,6107.86,4027.0,2080.8599999999997,0.5167270921281351,True,improved_holdout_without_coverage_loss
-baseline,total,13839.86,9794.0,4045.8600000000006,0.41309577292219735,True,improved_holdout_without_coverage_loss
-candidate,auto,7616.0,5767.0,1849.0,0.3206173053580718,True,improved_holdout_without_coverage_loss
-candidate,bike,3655.36,4027.0,371.6399999999999,0.09228706232927734,True,improved_holdout_without_coverage_loss
-candidate,total,11271.36,9794.0,1477.3600000000006,0.15084337349397597,True,improved_holdout_without_coverage_loss
+baseline,auto,7000.0,0.0,7000.0,,True,no_actual_holdout_use_validated_candidate
+baseline,bike,6438.86,0.0,6438.86,,True,no_actual_holdout_use_validated_candidate
+baseline,total,13438.86,0.0,13438.86,,True,no_actual_holdout_use_validated_candidate
+candidate,auto,6239.0,0.0,6239.0,,True,no_actual_holdout_use_validated_candidate
+candidate,bike,4018.86,0.0,4018.86,,True,no_actual_holdout_use_validated_candidate
+candidate,total,10257.86,0.0,10257.86,,True,no_actual_holdout_use_validated_candidate

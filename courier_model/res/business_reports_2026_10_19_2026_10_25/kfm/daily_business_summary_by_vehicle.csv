@@ -1,0 +1,15 @@
+business_group,date,vehicle_type,slots_to_create,overcoverage_hours
+kfm,2026-10-19,auto,109,88
+kfm,2026-10-19,bike,74,39
+kfm,2026-10-20,auto,108,70
+kfm,2026-10-20,bike,74,29
+kfm,2026-10-21,auto,106,66
+kfm,2026-10-21,bike,73,30
+kfm,2026-10-22,auto,109,74
+kfm,2026-10-22,bike,74,27
+kfm,2026-10-23,auto,111,82
+kfm,2026-10-23,bike,73,21
+kfm,2026-10-24,auto,115,81
+kfm,2026-10-24,bike,59,27
+kfm,2026-10-25,auto,116,81
+kfm,2026-10-25,bike,60,33

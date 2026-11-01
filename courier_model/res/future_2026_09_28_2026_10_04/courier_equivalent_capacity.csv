@@ -44,7 +44,7 @@ location_id,segment,time_segment,vehicle_type,courier_equiv,shift_overlap_hours
 125,medium,block_12_18,auto,6.666666666666667,40.0
 125,medium,block_18_24,auto,3.833333333333333,23.0
 126,high,afternoon,bike,20.666666666666668,80.0
-126,high,dinner,bike,15.833333333333334,62.0
+126,high,dinner,bike,15.833333333333332,62.0
 126,high,early_morning,bike,24.5,32.0
 126,high,late_evening,bike,3.333333333333333,14.0
 126,high,lunch,bike,26.0,136.0
@@ -199,7 +199,7 @@ location_id,segment,time_segment,vehicle_type,courier_equiv,shift_overlap_hours
 6,mega,dinner,bike,17.666666666666668,53.0
 6,mega,early_morning,auto,28.0,28.0
 6,mega,early_morning,bike,23.0,23.0
-6,mega,late_evening,auto,19.666666666666668,59.0
+6,mega,late_evening,auto,19.666666666666664,59.0
 6,mega,late_evening,bike,5.833333333333333,17.5
 6,mega,lunch,auto,27.375,109.5
 6,mega,lunch,bike,23.0,92.0
@@ -233,7 +233,7 @@ location_id,segment,time_segment,vehicle_type,courier_equiv,shift_overlap_hours
 7,mega,early_morning,auto,38.0,38.0
 7,mega,early_morning,bike,25.0,25.0
 7,mega,late_evening,auto,29.833333333333332,89.5
-7,mega,late_evening,bike,7.999999999999999,24.0
+7,mega,late_evening,bike,8.0,24.0
 7,mega,lunch,auto,41.875,167.5
 7,mega,lunch,bike,28.0,112.0
 7,mega,morning,auto,39.25,78.5
@@ -250,7 +250,7 @@ location_id,segment,time_segment,vehicle_type,courier_equiv,shift_overlap_hours
 9,medium,block_00_06,auto,0.4166666666666667,2.5
 9,medium,block_06_12,auto,21.083333333333332,126.5
 9,medium,block_12_18,auto,38.333333333333336,230.0
-9,medium,block_18_24,auto,31.583333333333336,189.5
+9,medium,block_18_24,auto,31.583333333333332,189.5
 99,mega,afternoon,bike,52.333333333333336,157.0
 99,mega,dinner,bike,38.166666666666664,114.5
 99,mega,early_morning,bike,59.0,59.0

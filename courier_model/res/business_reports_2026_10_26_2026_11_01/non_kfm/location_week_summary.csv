@@ -1,0 +1,2 @@
+business_group,location_id,segment,vehicle_type,slots_to_create,overcoverage_hours,location_name,predicted_orders
+non_kfm,54,medium,auto,21,7,Maroon,152.9557877702409

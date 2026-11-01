@@ -17,6 +17,8 @@ try:
         build_payment_quality_audit,
         load_orders_payment_report,
     )
+    from . import staffing_corridor as sc
+    from . import recent_productivity as rp
 except ImportError:
     import main as cm
     from partner_grouping import (
@@ -29,6 +31,8 @@ except ImportError:
         build_payment_quality_audit,
         load_orders_payment_report,
     )
+    import staffing_corridor as sc
+    import recent_productivity as rp
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -79,6 +83,7 @@ CALIBRATION_VEHICLE_WORSEN_TOLERANCE = float(
 PARTIAL_HOUR_MIN_OVERLAP = float(os.getenv("PARTIAL_HOUR_MIN_OVERLAP", "0.5"))
 # Extend the declared work window with hours where couriers were really
 # scheduled on most same-weekday dates of the last weeks.
+USE_ACTUAL_HOLDOUT_IN_GATE = os.getenv("CALIBRATION_USE_ACTUAL_HOLDOUT", "1") == "1"
 EXTEND_WINDOW_BY_COURIER_PRESENCE = (
     os.getenv("EXTEND_WINDOW_BY_COURIER_PRESENCE", "1") == "1"
 )
@@ -2908,6 +2913,57 @@ def save_business_group_reports(reports, output_dir):
                 group_df.to_csv(group_dir / f"{name}.csv", index=False)
 
 
+def apply_recent_staffing_corridor(hourly_df, forecast_start, location_to_planning):
+    counts, lookback_dates = sc.load_recent_staffing_counts(
+        forecast_start,
+        location_to_planning,
+    )
+    corridor_table = sc.build_staffing_corridor(counts, lookback_dates)
+    trend = None
+    if sc.CORRIDOR_DYNAMIC:
+        hour_segments = (
+            hourly_df[["location_id", "hour", "time_segment"]]
+            .assign(
+                location_id=lambda x: x["location_id"].astype(str),
+                hour=lambda x: x["hour"].astype(int),
+            )
+            .drop_duplicates(["location_id", "hour"])
+        )
+        orders_hourly = rp.load_recent_orders_by_hour(
+            forecast_start, location_to_planning
+        )
+        recent = sc.recent_daily_orders(orders_hourly, hour_segments, lookback_dates)
+        trend = sc.build_trend_ratio(hourly_df, recent)
+    hourly_df, audit = sc.apply_staffing_corridor(hourly_df, corridor_table, trend)
+    return hourly_df, corridor_table, audit
+
+
+def apply_recent_productivity_slots(hourly_df, forecast_start, location_to_planning):
+    start, finish = sc.lookback_window(forecast_start, rp.PRODUCTIVITY_LOOKBACK_DAYS)
+    orders_hourly = rp.load_recent_orders_by_hour(forecast_start, location_to_planning)
+    engine = cm.build_engine()
+    schedule_df = cm.prepare_schedule_history(
+        cm.load_schedule_history(
+            engine, cm.datetime_to_ms(start), cm.datetime_to_ms(finish)
+        ),
+        location_to_planning,
+    )
+    couriers_hourly = sc.schedule_hour_counts(schedule_df, start, finish)
+    dates = pd.date_range(
+        pd.Timestamp(start.date()), pd.Timestamp(finish.date()), inclusive="left"
+    )
+    hour_segments = (
+        hourly_df[["location_id", "hour", "time_segment"]]
+        .assign(location_id=lambda x: x["location_id"].astype(str), hour=lambda x: x["hour"].astype(int))
+        .drop_duplicates(["location_id", "hour"])
+    )
+    table = rp.build_productivity_table(
+        orders_hourly, couriers_hourly, hour_segments, dates
+    )
+    hourly_df, audit = rp.apply_recent_productivity(hourly_df, table)
+    return hourly_df, table, audit
+
+
 def main():
     global MINIMIZE_SHIFT_OVERCOVERAGE
 
@@ -2992,6 +3048,24 @@ def main():
         payment_rates,
         delivery_p70_rates,
     )
+    productivity_table = pd.DataFrame()
+    productivity_audit = pd.DataFrame()
+    if rp.RECENT_PRODUCTIVITY_ENABLED:
+        hourly_df, productivity_table, productivity_audit = (
+            apply_recent_productivity_slots(
+                hourly_df,
+                forecast_df["segment_datetime"].min(),
+                partner_grouping.location_to_planning,
+            )
+        )
+    corridor_table = pd.DataFrame()
+    corridor_audit = pd.DataFrame()
+    if sc.STAFFING_CORRIDOR_ENABLED:
+        hourly_df, corridor_table, corridor_audit = apply_recent_staffing_corridor(
+            hourly_df,
+            forecast_df["segment_datetime"].min(),
+            partner_grouping.location_to_planning,
+        )
     payment_quality_audit = pd.concat(
         [
             payment_quality_audit,
@@ -3035,7 +3109,12 @@ def main():
         finally:
             MINIMIZE_SHIFT_OVERCOVERAGE = previous_minimize
 
-    actual_hours = load_actual_courier_hours(FORECAST_PATH)
+    if USE_ACTUAL_HOLDOUT_IN_GATE:
+        actual_hours = load_actual_courier_hours(FORECAST_PATH)
+    else:
+        # Mirrors production: a future week has no actuals, so the gate relies
+        # only on validation constraints.
+        actual_hours = {cm.AUTO: 0.0, cm.BIKE: 0.0}
     calibration_comparison, candidate_accepted = (
         build_courier_hour_calibration_comparison(
             baseline_shift_plan,
@@ -3070,6 +3149,18 @@ def main():
     reports["shift_earnings_audit"] = build_shift_earnings_audit(shift_plan)
     reports["payment_input_quality_audit"] = payment_quality_audit
     reports["work_window_extension_audit"] = window_extension_audit
+    reports["recent_productivity_table"] = productivity_table
+    reports["hourly_demand_after_adjustments"] = hourly_df[
+        [
+            c for c in [
+                "location_id", "date", "hour", "vehicle_type", "segment", "time_segment",
+                "predicted_orders", "slots_needed_model", "slots_needed",
+            ] if c in hourly_df.columns
+        ]
+    ]
+    reports["recent_productivity_audit"] = productivity_audit
+    reports["staffing_corridor_table"] = corridor_table
+    reports["staffing_corridor_audit"] = corridor_audit
     reports["courier_hour_calibration_comparison"] = calibration_comparison
     reports["control_week_validation"] = build_control_week_validation(
         hourly_df,

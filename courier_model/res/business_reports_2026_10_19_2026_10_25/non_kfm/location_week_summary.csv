@@ -1,0 +1,4 @@
+business_group,location_id,segment,vehicle_type,slots_to_create,overcoverage_hours,location_name,predicted_orders
+non_kfm,54,medium,auto,20,15,Maroon,157.27098992531262
+non_kfm,125,medium,auto,2,0,Meraki,49.75445990575784
+non_kfm,604,low,auto,2,0,Cihan Комсомольский,2.959280441732647
