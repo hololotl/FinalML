@@ -1,3 +1,0 @@
-model,rows,auto_slot_mae,auto_under_sum,auto_over_sum,auto_slot_wape,bike_slot_mae,bike_under_sum,bike_over_sum,bike_slot_wape,total_slot_mae,total_under_sum,total_over_sum,total_slot_wape
-baseline,2663,1.0326699211415697,0.0,2750.0,,0.7622981599699586,0.0,2030.0,,1.7949680811115283,0.0,4780.0,
-selected,2663,0.9519339091250469,0.0,2535.0,,0.4615095756665415,0.0,1229.0,,1.4134434847915884,0.0,3764.0,

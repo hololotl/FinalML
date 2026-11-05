@@ -1,6 +1,0 @@
-business_group,location_id,segment,vehicle_type,slots_to_create,overcoverage_hours,location_name,predicted_orders
-non_kfm,54,medium,auto,15,12,Maroon,154.37372861459622
-non_kfm,597,low,bike,14,30,Rockets Тверской,38.2775582847646
-non_kfm,640,low,auto,7,0,Мясо&Рыба Европолис,38.36866516651664
-non_kfm,639,low,bike,7,0,Сыроварня ЗИЛАРТ,37.91362148278244
-non_kfm,673,low,auto,7,42,Печорин Мичуринский,4.7261607346134245

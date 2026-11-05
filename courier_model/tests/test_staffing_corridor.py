@@ -96,5 +96,92 @@ class StaffingCorridorTests(unittest.TestCase):
         self.assertEqual(int(audit["slot_hours_lowered"].sum()), 4)
 
 
+    def test_hour_staffing_gate_zeros_never_staffed_hours(self):
+        dates = pd.date_range("2026-10-20", periods=7)
+        rows = []
+        for date in dates:
+            rows.append(
+                {
+                    "location_id": "99",
+                    "date": date,
+                    "hour": 8,
+                    "vehicle_type": "bike",
+                    "couriers": 1,
+                }
+            )
+        counts = pd.DataFrame(rows)
+        active, locations = sc.build_recent_active_hours(counts)
+        self.assertIn(("99", 8), active)
+        self.assertNotIn(("99", 7), active)
+        hourly = pd.DataFrame(
+            [
+                {
+                    "location_id": "99",
+                    "date": "2026-10-27",
+                    "hour": 7,
+                    "vehicle_type": "bike",
+                    "slots_needed": 2,
+                    "slots_needed_model": 2,
+                    "slot_demand_source": "model",
+                },
+                {
+                    "location_id": "99",
+                    "date": "2026-10-27",
+                    "hour": 8,
+                    "vehicle_type": "bike",
+                    "slots_needed": 2,
+                    "slots_needed_model": 2,
+                    "slot_demand_source": "model",
+                },
+            ]
+        )
+        updated, audit = sc.apply_recent_hour_staffing_gate(
+            hourly, active, locations
+        )
+        self.assertEqual(int(updated.loc[updated.hour == 7, "slots_needed"].iloc[0]), 0)
+        self.assertEqual(int(updated.loc[updated.hour == 8, "slots_needed"].iloc[0]), 2)
+        self.assertEqual(len(audit), 1)
+
+    def test_feedback_closing_clamp_zeros_late_hours(self):
+        hourly = pd.DataFrame(
+            [
+                {
+                    "location_id": "115",
+                    "date": "2026-11-02",
+                    "hour": 21,
+                    "vehicle_type": "auto",
+                    "slots_needed": 1,
+                },
+                {
+                    "location_id": "115",
+                    "date": "2026-11-02",
+                    "hour": 22,
+                    "vehicle_type": "auto",
+                    "slots_needed": 1,
+                },
+                {
+                    "location_id": "39",
+                    "date": "2026-11-02",
+                    "hour": 20,
+                    "vehicle_type": "bike",
+                    "slots_needed": 2,
+                },
+                {
+                    "location_id": "39",
+                    "date": "2026-11-02",
+                    "hour": 21,
+                    "vehicle_type": "bike",
+                    "slots_needed": 1,
+                },
+            ]
+        )
+        updated, audit = sc.apply_feedback_closing_hour_clamp(hourly)
+        self.assertEqual(int(updated.loc[updated.hour == 21, "slots_needed"].iloc[0]), 1)
+        self.assertEqual(int(updated.loc[updated.hour == 22, "slots_needed"].iloc[0]), 0)
+        self.assertEqual(int(updated.loc[updated.location_id == "39", "slots_needed"].iloc[0]), 2)
+        self.assertEqual(int(updated.loc[updated.location_id == "39", "slots_needed"].iloc[1]), 0)
+        self.assertEqual(len(audit), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

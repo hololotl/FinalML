@@ -98,9 +98,14 @@ AUTO = "auto"
 BIKE = "bike"
 VEHICLE_TYPES = [AUTO, BIKE]
 
+# Matches prod TransportOption; moto is planned as bike-only capacity.
 TRANSPORT_AUTO_BIKE = 0
 TRANSPORT_AUTO = 1
 TRANSPORT_BIKE = 2
+TRANSPORT_MOTO = 3
+TRANSPORT_AUTO_MOTO = 4
+TRANSPORT_BIKE_MOTO = 5
+TRANSPORT_AUTO_BIKE_MOTO = 6
 
 def build_engine():
     return create_engine(DB_URL)
@@ -142,20 +147,35 @@ def resolve_location_transport(location_id, transport_by_location, group_to_memb
         ]
         if not member_transports:
             return TRANSPORT_AUTO_BIKE
-        if all(value == TRANSPORT_AUTO for value in member_transports):
+        if all(transport_allowed_vehicles(value) == {AUTO} for value in member_transports):
             return TRANSPORT_AUTO
-        if all(value == TRANSPORT_BIKE for value in member_transports):
+        if all(transport_allowed_vehicles(value) == {BIKE} for value in member_transports):
             return TRANSPORT_BIKE
         return TRANSPORT_AUTO_BIKE
     return int(transport_by_location.get(location_id, TRANSPORT_AUTO_BIKE))
 
 
 def transport_allowed_vehicles(transport):
+    """Map prod TransportOption to planning vehicle types (auto / bike).
+
+    Moto counts as bike capacity. Unknown codes fall back to auto+bike.
+    """
+    transport = int(transport)
     if transport == TRANSPORT_AUTO:
         return {AUTO}
-    if transport == TRANSPORT_BIKE:
+    if transport in (TRANSPORT_BIKE, TRANSPORT_MOTO, TRANSPORT_BIKE_MOTO):
         return {BIKE}
+    if transport in (
+        TRANSPORT_AUTO_BIKE,
+        TRANSPORT_AUTO_MOTO,
+        TRANSPORT_AUTO_BIKE_MOTO,
+    ):
+        return {AUTO, BIKE}
     return {AUTO, BIKE}
+
+
+def transport_uses_vehicle_mix(transport):
+    return transport_allowed_vehicles(transport) == {AUTO, BIKE}
 
 
 def compute_vehicle_slots(auto_orders, bike_orders, slot_capacity):
@@ -1694,7 +1714,7 @@ def build_courier_forecast(
             transport_by_location or {},
             group_to_members or {},
         )
-        if transport == TRANSPORT_AUTO_BIKE:
+        if transport_uses_vehicle_mix(transport):
             schedule_shares = (schedule_vehicle_share_lookup or {}).get(
                 str(row[LOCATION_COLUMN])
             )

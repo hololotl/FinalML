@@ -42,6 +42,22 @@ CORRIDOR_DYNAMIC_MIN_DAILY_ORDERS = float(
 )
 CORRIDOR_DYNAMIC_MAX_SCALE = float(os.getenv("CORRIDOR_DYNAMIC_MAX_SCALE", "2.0"))
 
+# Drop planned slots in hours where no courier worked during recent history.
+RECENT_HOUR_STAFFING_GATE = os.getenv("RECENT_HOUR_STAFFING_GATE", "1") == "1"
+RECENT_HOUR_STAFFING_LOOKBACK_DAYS = int(
+    os.getenv("RECENT_HOUR_STAFFING_LOOKBACK_DAYS", "7")
+)
+
+# TODO(REMOVE): Ops feedback — ``work_hours`` in DB runs later than real closing.
+# Fix prod ``work_hours`` and delete this block + ``apply_feedback_closing_hour_clamp``.
+FEEDBACK_CLOSING_HOUR_CLAMP = os.getenv("FEEDBACK_CLOSING_HOUR_CLAMP", "1") == "1"
+# ``hour`` is slot start; first hour start to zero (inclusive) when restaurant is closed.
+FEEDBACK_LOCATION_FIRST_ZERO_HOUR = {
+    "115": 22,  # Опен Символ — closes 22:00
+    "126": 22,  # Опен Покровка — closes 22:00
+    "39": 21,  # Гребной — closes 21:00
+}
+
 CORRIDOR_COLUMNS = [
     "location_id",
     "vehicle_type",
@@ -339,3 +355,103 @@ def apply_staffing_corridor(hourly_df, corridor_df, trend_df=None):
     )
     hourly = hourly.drop(columns=["_day_type"])
     return hourly, audit
+
+
+def build_recent_active_hours(counts):
+    """(location_id, hour) pairs with at least one staffed hour in ``counts``."""
+    if counts is None or counts.empty:
+        return set(), set()
+    active = counts[counts["couriers"] > 0].drop_duplicates(
+        ["location_id", "date", "hour"]
+    )
+    keys = {
+        (str(row.location_id), int(row.hour))
+        for row in active.itertuples(index=False)
+    }
+    locations_with_history = set(counts["location_id"].astype(str).unique())
+    return keys, locations_with_history
+
+
+def apply_recent_hour_staffing_gate(hourly_df, active_hours, locations_with_history):
+    """Zero ``slots_needed`` when the hour never had couriers in recent history."""
+    if hourly_df.empty or not locations_with_history:
+        return hourly_df, pd.DataFrame()
+
+    hourly = hourly_df.copy()
+    hourly["location_id"] = hourly["location_id"].astype(str)
+    hourly["hour"] = hourly["hour"].astype(int)
+    if "slots_needed_model" not in hourly.columns:
+        hourly["slots_needed_model"] = hourly["slots_needed"]
+
+    def allowed(row):
+        location_id = row["location_id"]
+        if location_id not in locations_with_history:
+            return True
+        return (location_id, int(row["hour"])) in active_hours
+
+    keep = hourly.apply(allowed, axis=1)
+    blocked = ~keep & (hourly["slots_needed"].astype(int) > 0)
+    before = hourly["slots_needed"].astype(int)
+    hourly.loc[blocked, "slots_needed"] = 0
+    if "slot_demand_source" in hourly.columns:
+        hourly.loc[blocked, "slot_demand_source"] = (
+            hourly.loc[blocked, "slot_demand_source"].astype(str)
+            + "+no_recent_hour"
+        )
+
+    audit_rows = []
+    for (location_id, hour), group in hourly.groupby(["location_id", "hour"]):
+        if location_id not in locations_with_history:
+            continue
+        slot_hours_before = int(before.loc[group.index].sum())
+        slot_hours_after = int(group["slots_needed"].astype(int).sum())
+        if slot_hours_before == slot_hours_after:
+            continue
+        audit_rows.append(
+            {
+                "location_id": location_id,
+                "hour": int(hour),
+                "had_recent_staffing": (location_id, int(hour)) in active_hours,
+                "slot_hours_before": slot_hours_before,
+                "slot_hours_after": slot_hours_after,
+            }
+        )
+    audit = pd.DataFrame(audit_rows)
+    return hourly, audit
+
+
+def apply_feedback_closing_hour_clamp(hourly_df):
+    """Zero slots at/after ops-reported closing for a fixed location list."""
+    if hourly_df.empty or not FEEDBACK_CLOSING_HOUR_CLAMP:
+        return hourly_df, pd.DataFrame()
+
+    hourly = hourly_df.copy()
+    hourly["location_id"] = hourly["location_id"].astype(str)
+    hourly["hour"] = hourly["hour"].astype(int)
+    if "slots_needed_model" not in hourly.columns:
+        hourly["slots_needed_model"] = hourly["slots_needed"]
+
+    audit_rows = []
+    for location_id, first_zero in FEEDBACK_LOCATION_FIRST_ZERO_HOUR.items():
+        mask = (hourly["location_id"] == location_id) & (
+            hourly["hour"] >= int(first_zero)
+        )
+        if not mask.any():
+            continue
+        before = hourly.loc[mask, "slots_needed"].astype(int).sum()
+        if before <= 0:
+            continue
+        hourly.loc[mask, "slots_needed"] = 0
+        if "slot_demand_source" in hourly.columns:
+            hourly.loc[mask, "slot_demand_source"] = (
+                hourly.loc[mask, "slot_demand_source"].astype(str)
+                + "+feedback_close"
+            )
+        audit_rows.append(
+            {
+                "location_id": location_id,
+                "first_zero_hour": int(first_zero),
+                "slot_hours_removed": int(before),
+            }
+        )
+    return hourly, pd.DataFrame(audit_rows)

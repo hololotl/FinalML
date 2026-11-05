@@ -1,8 +1,0 @@
-business_group,date,predicted_orders,forecast_segment_slots,auto_long_shift_slots,bike_long_shift_slots,total_long_shift_slots,locations,overcoverage_hours
-non_kfm,2026-06-29,76.62652553247914,28,16,2,18,43,18
-non_kfm,2026-06-30,70.42734994305269,25,16,1,17,43,23
-non_kfm,2026-07-01,67.20655366613396,25,15,1,16,43,19
-non_kfm,2026-07-02,72.56044204911798,26,16,1,17,43,19
-non_kfm,2026-07-03,81.77549864357152,27,15,3,18,43,22
-non_kfm,2026-07-04,73.31764239910616,24,15,1,16,43,23
-non_kfm,2026-07-05,67.36615403228525,25,15,1,16,42,19

@@ -2938,6 +2938,25 @@ def apply_recent_staffing_corridor(hourly_df, forecast_start, location_to_planni
     return hourly_df, corridor_table, audit
 
 
+def apply_recent_hour_staffing_gate(hourly_df, forecast_start, location_to_planning):
+    counts, _ = sc.load_recent_staffing_counts(
+        forecast_start,
+        location_to_planning,
+        lookback_days=sc.RECENT_HOUR_STAFFING_LOOKBACK_DAYS,
+    )
+    active_hours, locations_with_history = sc.build_recent_active_hours(counts)
+    hourly_df, audit = sc.apply_recent_hour_staffing_gate(
+        hourly_df,
+        active_hours,
+        locations_with_history,
+    )
+    return hourly_df, audit
+
+
+def apply_feedback_closing_hour_clamp(hourly_df):
+    return sc.apply_feedback_closing_hour_clamp(hourly_df)
+
+
 def apply_recent_productivity_slots(hourly_df, forecast_start, location_to_planning):
     start, finish = sc.lookback_window(forecast_start, rp.PRODUCTIVITY_LOOKBACK_DAYS)
     orders_hourly = rp.load_recent_orders_by_hour(forecast_start, location_to_planning)
@@ -3066,6 +3085,18 @@ def main():
             forecast_df["segment_datetime"].min(),
             partner_grouping.location_to_planning,
         )
+    hour_staffing_gate_audit = pd.DataFrame()
+    if sc.RECENT_HOUR_STAFFING_GATE:
+        hourly_df, hour_staffing_gate_audit = apply_recent_hour_staffing_gate(
+            hourly_df,
+            forecast_df["segment_datetime"].min(),
+            partner_grouping.location_to_planning,
+        )
+    feedback_closing_audit = pd.DataFrame()
+    if sc.FEEDBACK_CLOSING_HOUR_CLAMP:
+        hourly_df, feedback_closing_audit = apply_feedback_closing_hour_clamp(
+            hourly_df
+        )
     payment_quality_audit = pd.concat(
         [
             payment_quality_audit,
@@ -3161,6 +3192,8 @@ def main():
     reports["recent_productivity_audit"] = productivity_audit
     reports["staffing_corridor_table"] = corridor_table
     reports["staffing_corridor_audit"] = corridor_audit
+    reports["recent_hour_staffing_gate_audit"] = hour_staffing_gate_audit
+    reports["feedback_closing_hour_clamp_audit"] = feedback_closing_audit
     reports["courier_hour_calibration_comparison"] = calibration_comparison
     reports["control_week_validation"] = build_control_week_validation(
         hourly_df,
