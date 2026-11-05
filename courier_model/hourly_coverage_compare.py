@@ -107,6 +107,9 @@ def build_forecast_hourly(plan: pd.DataFrame) -> pd.DataFrame:
     for row in plan.itertuples(index=False):
         start = parse_hour(row.shift_start)
         finish = parse_hour(row.shift_finish)
+        # Shift ending at 22:30 still covers hour 22.
+        if ":" in str(row.shift_finish) and int(str(row.shift_finish).split(":")[1]) > 0:
+            finish += 1
         if finish <= start:
             continue
         for hour in range(start, finish):

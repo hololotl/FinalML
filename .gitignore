@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.cover
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# DB dumps and large local data
+*.dump
+*.sql
+*.sql.gz
+*.tsv
+*.parquet
+
+# CatBoost training logs
+catboost_info/
+**/catboost_info/
+
+# --- week_model generated outputs ---
+week_model/res/*.csv
+week_model/res/*.pkl
+week_model/res/*.json
+
+# --- courier_model generated outputs ---
+courier_model/res/business_reports/
+courier_model/res/business_reports_*/
+courier_model/res/future_*/
+courier_model/res/hourly_coverage_compare/
+courier_model/res/hourly_coverage_compare_*/
+courier_model/res/delivery_duration/
+courier_model/res/*.csv
+courier_model/res/**/*.md
+
+# Legacy experiment folders (outputs only)
+z_rossia_sila/res/
+z_rossia_sila/**/res/
+z_rossia_sila2/res/
+z_rossia_sila2/**/res/
+z_rossia_sila3/res/
+z_rossia_sila3/**/res/
+week_model_poka norm/res/
+week_model_poka norm/catboost_info/
+
+# Misc local experiments
+/tmp/

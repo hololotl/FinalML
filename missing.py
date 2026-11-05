@@ -46,12 +46,25 @@ def columns(conn, table):
 
 
 INCREMENTAL_COLUMNS = {
-    "locations": "id",
-    "couriers": "id",
+    # Reference tables must be scanned fully. A referenced courier/location
+    # may be absent in target even when its ID is below target MAX(id).
+    # ON CONFLICT DO NOTHING keeps this idempotent.
     "orders": "id",
     "courier_shifts": "id",
     "courier_schedule": "id",
     "courier_schedule_locations": "schedule_id",
+}
+
+# When a reference row is skipped by ON CONFLICT on a natural key
+# (e.g. couriers.phone), dependent FKs must use the existing target id.
+NATURAL_KEY_REMAP = {
+    "couriers": "phone",
+    "locations": "coffeemania_id",
+}
+
+FK_REMAP_COLUMNS = {
+    "courier_id": "couriers",
+    "location_id": "locations",
 }
 
 
@@ -66,7 +79,66 @@ def target_max_value(table, column):
         return cursor.fetchone()[0]
 
 
+def build_id_remap(table, natural_key):
+    """Map source.id -> target.id for rows that exist only via natural key."""
+    with source.cursor() as source_cursor:
+        source_cursor.execute(
+            sql.SQL("SELECT id, {} FROM {}").format(
+                sql.Identifier(natural_key),
+                sql.Identifier("public", table),
+            )
+        )
+        source_rows = source_cursor.fetchall()
+
+    with target.cursor() as target_cursor:
+        target_cursor.execute(
+            sql.SQL("SELECT id, {} FROM {}").format(
+                sql.Identifier(natural_key),
+                sql.Identifier("public", table),
+            )
+        )
+        target_rows = target_cursor.fetchall()
+
+    target_ids = {row_id for row_id, _ in target_rows}
+    target_by_key = {
+        key: row_id for row_id, key in target_rows if key is not None
+    }
+
+    remap = {}
+    for source_id, key in source_rows:
+        if source_id in target_ids:
+            continue
+        if key is None or key not in target_by_key:
+            continue
+        remap[source_id] = target_by_key[key]
+    return remap
+
+
+def remap_batch(batch, common_columns, id_remaps):
+    if not id_remaps:
+        return batch
+    column_indexes = {
+        column: index
+        for index, column in enumerate(common_columns)
+        if column in FK_REMAP_COLUMNS and FK_REMAP_COLUMNS[column] in id_remaps
+    }
+    if not column_indexes:
+        return batch
+
+    remapped = []
+    for row in batch:
+        values = list(row)
+        for column, index in column_indexes.items():
+            value = values[index]
+            table = FK_REMAP_COLUMNS[column]
+            if value in id_remaps[table]:
+                values[index] = id_remaps[table][value]
+        remapped.append(tuple(values))
+    return remapped
+
+
 orders_triggers_disabled = False
+id_remaps = {}
 try:
     for table in TABLES:
         source_columns = columns(source, table)
@@ -134,6 +206,8 @@ try:
             if not batch:
                 break
 
+            batch = remap_batch(batch, common_columns, id_remaps)
+
             with target.cursor() as target_cursor:
                 execute_values(
                     target_cursor,
@@ -151,6 +225,17 @@ try:
 
         source_cursor.close()
         print(f"{table}: добавлено {inserted}")
+
+        if table in NATURAL_KEY_REMAP:
+            natural_key = NATURAL_KEY_REMAP[table]
+            if natural_key in common_columns:
+                id_remaps[table] = build_id_remap(table, natural_key)
+                if id_remaps[table]:
+                    print(
+                        f"{table}: remap по {natural_key}: "
+                        f"{len(id_remaps[table])} id "
+                        f"(пример {next(iter(id_remaps[table].items()))})"
+                    )
 finally:
     if orders_triggers_disabled:
         target.rollback()
